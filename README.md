@@ -1,41 +1,59 @@
-# All You Can Do with Your Thermal Printer
+# AYCD Printer
 
-Aplikasi daftar tugas untuk Windows. Antarmuka HTML/CSS/JavaScript berjalan di WebView2; aplikasi C# WinForms menyimpan daftar secara lokal dan mengirim hasil cetak ESC/POS melalui port serial Bluetooth.
+**All You Can Do with Your Thermal Printer** adalah aplikasi daftar tugas untuk Windows. Antarmukanya berjalan di WebView2, sedangkan WinForms menyimpan data lokal dan mengirim cetakan ke printer thermal Bluetooth serial yang mendukung ESC/POS. Aplikasi tidak memerlukan akun atau internet untuk membuat daftar dan mencetak.
 
-## Menjalankan
+## Mulai menggunakan
 
-1. Bangun rilis dari sumber dengan perintah pada bagian **Build rilis lokal**, lalu jalankan `dist\PrintToDo.exe` dengan folder `dist\assets` tetap di tempatnya. WebView2 Runtime diperlukan; build ini sudah membawa .NET Desktop Runtime.
-2. Pasangkan printer melalui pengaturan Bluetooth Windows. Di halaman **Settings**, pilih port COM keluar milik printer dan cetak halaman uji. Pada pengujian aplikasi ini, printer ESC/POS 80 mm berhasil mencetak melalui COM6 dengan kecepatan port Windows 115200. Port dan kecepatan pada laptop lain dapat berbeda.
-3. Pilih profil 80 mm atau 58 mm. Jika hasil cetak terpotong, sesuaikan **Lebar area cetak (dot)** lalu ulangi halaman uji.
+1. Jalankan installer Windows yang dibuat dari repo ini. Installer memasang aplikasi untuk pengguna saat ini dan menyiapkan WebView2 Runtime jika belum tersedia.
+2. Pasangkan printer di pengaturan Bluetooth Windows. Buka **Settings** di aplikasi, pilih port COM keluar, lalu klik **Cetak halaman uji**. Pastikan hasilnya benar-benar keluar di kertas.
+3. Pilih lebar kertas **58 mm** atau **80 mm**. Jika tepi cetakan terpotong, buka **Pengaturan lanjutan**, sesuaikan **Lebar area cetak (dot)**, lalu ulangi halaman uji.
+4. Buka **To do list**, pilih tanggal, dan buat daftar. Isi judul, tambahkan section dan blok, lalu cetak dari pratinjau.
 
-## Menyusun daftar dengan blok
+Printer RPP02N 80 mm pernah berhasil diuji pada laptop pengembangan melalui COM6 dengan kecepatan port Windows 115200. Port dan kecepatan pada perangkat lain bisa berbeda. Nilai *BT Baud* pada halaman self-test printer tidak selalu sama dengan kecepatan port COM Windows.
 
-Pada halaman **To do list**, buat daftar lalu isi judul pada card tersendiri. Klik **+ Tambah section** dan pilih blok pertama: **Judul bagian**, **Checklist**, atau **Catatan**. Section baru tidak memiliki judul otomatis; tambahkan blok lain lewat **+ Tambah blok**. Tombol panah mengubah urutan section atau blok di dalam section. Garis lurus memisahkan judul daftar dari section pertama, sedangkan garis putus-putus memisahkan antarsection, termasuk pada cetakan. Daftar lama, termasuk daftar Weekly, tetap dapat dibuka dari **History**. Pratinjau mengikuti urutan section dan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi. Nama penutup opsional untuk semua cetakan dapat diisi di **Settings**.
+## Daftar dan cetakan
 
-Data disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Menghapus aplikasi tidak menghapus file tersebut. Salin file ini untuk mencadangkan daftar secara manual.
+- **To do list:** setiap daftar memiliki judul dan tanggal. Tambahkan section dengan memilih blok pertama berupa **Judul bagian**, **Checklist**, atau **Catatan**. Tambahkan blok lain melalui **+ Tambah blok** dan atur urutannya dengan tombol panah.
+- **History:** buka, ubah, atau cetak ulang daftar yang tersimpan. Daftar Weekly dari versi lama tetap dapat dibuka di sini; menu khusus Weekly sudah tidak tersedia.
+- **Pratinjau:** mengikuti urutan section dan blok. Garis lurus memisahkan judul dari isi, garis putus-putus memisahkan section, dan nama penutup opsional dicetak setelah garis penutup. Kotak checklist pada kertas selalu kosong meskipun sudah ditandai selesai di aplikasi.
+- **Settings:** pilih profil printer, port COM, ukuran kertas, dan satu nama penutup untuk semua daftar. Pengaturan lanjutan memuat nama profil, lebar cetak dalam dot, dan kecepatan port.
 
-## Update dari repo Git
+Daftar dan pengaturan disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Untuk mencadangkan data, tutup aplikasi lalu salin file tersebut ke tempat lain. Uninstall aplikasi tidak menghapus data ini.
 
-Buka **Settings** lalu klik **Cek Update** di bagian bawah pengaturan printer untuk memeriksa repo `https://github.com/Rhahee/aycd-with-your-thermal.git` pada branch `main`. Aplikasi melakukan clone pada penggunaan pertama, kemudian `git pull --ff-only` untuk pemeriksaan berikutnya. Jika ada commit baru, tombol **Update** aktif. Klik tombol tersebut untuk membangun rilis, mengganti `PrintToDo.exe` dan folder `assets` di lokasi aplikasi terpasang, lalu membuka ulang aplikasi. Versi `.exe` sebelumnya disimpan sebagai `PrintToDo.exe.previous`. Data daftar dan profil printer tetap berada di `%LOCALAPPDATA%\PrintToDo\state.json`.
+## Pembaruan aplikasi
 
-Versi aplikasi dan commit yang terpasang terlihat di kiri bawah sidebar. Nama penutup yang diisi akan dicetak setelah garis penutup.
+Di bagian bawah **Settings**, klik **Cek Update**. Aplikasi mengambil commit terbaru dari [repo ini](https://github.com/Rhahee/aycd-with-your-thermal) pada branch `main`. Jika tersedia, tombol **Update** akan aktif. Tombol itu membangun aplikasi dari source, memasang hasilnya di folder aplikasi, lalu membuka ulang aplikasi. Versi dan commit yang terpasang ditampilkan di kiri bawah sidebar.
 
-Proses update memerlukan Git, SDK .NET 10, akses ke repo, dan hak tulis pada folder `dist`. Gunakan repo yang Anda percayai karena kode dari repo akan dibangun dan dijalankan di laptop.
+**Cek Update** memerlukan Git dan akses ke GitHub. **Update** juga memerlukan SDK .NET 10 dan izin menulis ke folder instalasi. Installer sudah membawa .NET Desktop Runtime untuk menjalankan aplikasi, tetapi runtime tersebut tidak menggantikan SDK yang diperlukan untuk membangun update. Jika update gagal, daftar tetap tersimpan; salinan executable sebelumnya tersedia sebagai `PrintToDo.exe.previous` bila penggantian file sudah dimulai. Karena source dari repo dibangun dan dijalankan di komputer, gunakan hanya repo yang Anda percayai.
 
 ## Dukungan printer
 
-Aplikasi mengirim gambar raster ESC/POS ke port serial Bluetooth. Bluetooth yang sudah terpasang tidak menjamin printer mendukung protokol ini. Keberhasilan baru pasti setelah hasil halaman uji diperiksa pada kertas. Tidak ada pemotongan kertas otomatis.
+Aplikasi mengirim gambar raster ESC/POS melalui port serial Bluetooth. Memasangkan printer saja belum membuktikan dukungan ESC/POS; lakukan halaman uji dan periksa hasil fisiknya. Profil 58 mm dan 80 mm mengatur tata letak, tetapi tidak mengubah protokol printer. Pemotongan kertas otomatis tidak tersedia.
 
-## Build rilis lokal
+## Membangun dari source
 
-SDK .NET 10 terpasang lokal di `%LOCALAPPDATA%\Microsoft\dotnet`. Dari PowerShell di folder proyek:
+Persyaratan pengembang: Windows 10 atau lebih baru (x64), SDK .NET 10, Git, dan WebView2 Runtime untuk menjalankan hasil build. Dari PowerShell di folder repo:
 
-`& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist`
+```powershell
+dotnet publish PrintToDo.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist
+```
 
-Hasilnya berada di `dist/`. Jalankan `PrintToDo.exe` dari folder ini agar folder `assets` tersedia. Build ini sudah membawa .NET Desktop Runtime; WebView2 Runtime tetap diperlukan.
+Jalankan `dist\PrintToDo.exe` bersama folder `dist\assets`. Hasil publish membawa .NET Desktop Runtime, tetapi WebView2 Runtime tetap diperlukan. Jika SDK dipasang hanya untuk pengguna Windows saat ini dan `dotnet` belum ada di `PATH`, gunakan `& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe"` sebagai pengganti `dotnet` pada perintah di atas.
 
-## Installer Windows
+Untuk menjalankan pengujian smoke:
 
-Jalankan `installer\Build-Installer.ps1` di PowerShell setelah perubahan sumber di-commit pada branch `main`. Skrip membangun aplikasi, menandai commit terpasang untuk tombol update, mengunduh bootstrapper WebView2 resmi dari Microsoft bila belum ada, memeriksa tanda tangan digitalnya, lalu membuat installer dengan Inno Setup 6. Hasilnya berada di `installer\output\` dan tidak masuk Git.
+```powershell
+dotnet run --project tests/PrintToDo.Smoke.csproj -c Release
+```
 
-Installer memasang aplikasi untuk pengguna Windows saat ini di `%LOCALAPPDATA%\Programs\All You Can Do with Your Thermal Printer`, membuat pintasan Start Menu, dan menawarkan pintasan desktop. Lokasi ini dapat ditulis oleh aplikasi saat memasang update dari Settings. Bila WebView2 Runtime belum ada, installer akan memasangnya melalui bootstrapper Microsoft dan memerlukan internet. Data daftar di `%LOCALAPPDATA%\PrintToDo\state.json` tidak dihapus saat aplikasi di-uninstall. Tombol update dari sumber Git masih memerlukan Git dan .NET 10 SDK pada komputer yang menjalankan aplikasi.
+## Membuat installer
+
+Pasang Inno Setup 6, lalu commit dan push perubahan ke `main`. Skrip installer mensyaratkan working tree bersih serta commit lokal sama dengan `origin/main`, karena commit tersebut ditandai sebagai versi terpasang untuk fitur update.
+
+```powershell
+.\installer\Build-Installer.ps1
+```
+
+Skrip melakukan publish aplikasi, mengunduh bootstrapper WebView2 dari Microsoft jika belum ada, memeriksa tanda tangan digitalnya, dan membuat installer di `installer\output\`. Folder `dist\`, `installer\output\`, dan `installer\prerequisites\` tidak dilacak Git.
+
+Installer memasang aplikasi ke `%LOCALAPPDATA%\Programs\All You Can Do with Your Thermal Printer` untuk pengguna Windows saat ini, membuat pintasan Start Menu, dan menawarkan pintasan desktop. Koneksi internet diperlukan saat instalasi jika WebView2 Runtime perlu dipasang.
