@@ -18,7 +18,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "Print-To-Do";
+        Text = "AYCD Printer";
         MinimumSize = new Size(900, 620);
         Size = new Size(1240, 820);
         StartPosition = FormStartPosition.CenterScreen;
@@ -55,7 +55,7 @@ internal sealed class MainForm : Form
         catch (Exception ex)
         {
             MessageBox.Show(this, "WebView2 tidak dapat dibuka: " + ex.Message,
-                "Print-To-Do", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "AYCD Printer", MessageBoxButtons.OK, MessageBoxIcon.Error);
             Close();
         }
     }
@@ -223,7 +223,7 @@ internal sealed class MainForm : Form
         catch (Exception ex)
         {
             MessageBox.Show(this, "Pemasang update tidak dapat dijalankan: " + ex.Message,
-                "Print-To-Do", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "AYCD Printer", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 

@@ -14,7 +14,7 @@ let updateAvailable = false;
 let updateBusy = false;
 
 if (!window.chrome?.webview) {
-  document.body.textContent = "Aplikasi ini perlu dibuka melalui Print-To-Do di Windows.";
+  document.body.textContent = "Aplikasi ini perlu dibuka melalui AYCD Printer di Windows.";
 } else {
   window.chrome.webview.addEventListener("message", ({ data }) => {
     if (data.type === "updateProgress") {
@@ -73,8 +73,19 @@ async function start() {
 }
 
 function bindEvents() {
+  document.querySelectorAll(".nav-parent").forEach((button) => button.addEventListener("click", () => {
+    const group = button.closest(".nav-group");
+    setNavGroup(group, button.getAttribute("aria-expanded") !== "true");
+    if (button.getAttribute("aria-expanded") === "true") {
+      document.querySelectorAll(".nav-group").forEach((other) => {
+        if (other !== group) setNavGroup(other, false);
+      });
+    }
+  }));
   document.querySelectorAll(".nav-button").forEach((button) => button.addEventListener("click", () => {
     view = button.dataset.view;
+    document.querySelectorAll(".nav-group").forEach((group) =>
+      setNavGroup(group, group.contains(button)));
     if (view === "daily") $("planDate").value = isoDate(new Date());
     if (view === "weekly") $("planDate").value = weekStart(isoDate(new Date()));
     if (view === "daily" || view === "weekly") selectForDate();
@@ -107,6 +118,11 @@ function bindEvents() {
   $("deleteProfile").addEventListener("click", deleteProfile);
   $("checkUpdate").addEventListener("click", checkUpdate);
   $("runUpdate").addEventListener("click", runUpdate);
+}
+
+function setNavGroup(group, expanded) {
+  group.querySelector(".nav-parent").setAttribute("aria-expanded", String(expanded));
+  group.querySelector(".nav-children").hidden = !expanded;
 }
 
 function selectForDate() {
@@ -147,13 +163,16 @@ function persistList() {
 function render() {
   document.querySelectorAll(".nav-button").forEach((button) =>
     button.classList.toggle("active", button.dataset.view === view));
+  document.querySelectorAll(".nav-group").forEach((group) =>
+    group.querySelector(".nav-parent").classList.toggle("current",
+      !!group.querySelector(`.nav-button[data-view="${view}"]`)));
   const planner = view === "daily" || view === "weekly";
   $("plannerView").classList.toggle("hidden", !planner);
   $("historyView").classList.toggle("hidden", view !== "history");
   $("printerView").classList.toggle("hidden", view !== "printer");
   $("settingsView").classList.toggle("hidden", view !== "settings");
   $("newListButton").classList.toggle("hidden", !planner);
-  $("pageTitle").textContent = ({ daily: "Hari ini", weekly: "Minggu ini", history: "Riwayat daftar", printer: "Printer", settings: "Settings" })[view];
+  $("pageTitle").textContent = ({ daily: "Daily", weekly: "Weekly", history: "History", printer: "Printer", settings: "Update" })[view];
   if (planner) renderPlanner();
   if (view === "history") renderHistory();
   if (view === "printer") renderPrinter();
@@ -383,6 +402,8 @@ function renderHistory() {
     open.textContent = "Buka";
     open.addEventListener("click", () => {
       view = list.kind;
+      document.querySelectorAll(".nav-group").forEach((group) =>
+        setNavGroup(group, group.dataset.group === "todo"));
       $("planDate").value = list.date;
       selectedId = list.id;
       render();

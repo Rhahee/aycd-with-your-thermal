@@ -14,7 +14,7 @@ internal static class Program
         catch (Exception ex)
         {
             MessageBox.Show("Aplikasi tidak dapat dibuka: " + ex.Message,
-                "Print-To-Do", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "AYCD Printer", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

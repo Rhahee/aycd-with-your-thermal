@@ -45,7 +45,7 @@ internal static class UpdateApplier
         {
             MessageBox.Show("Update gagal dipasang: " + ex.Message +
                 "\n\nVersi sebelumnya tersimpan sebagai PrintToDo.exe.previous bila penggantian sudah dimulai.",
-                "Print-To-Do", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                "AYCD Printer", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         return true;
     }

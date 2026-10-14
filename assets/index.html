@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
-  <title>Print-To-Do</title>
+  <title>AYCD Printer</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,11 +13,21 @@
       <div class="brand"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/><path d="M18 12h.01"/></svg></span><span>AYCD Printer</span></div>
       <p class="sidebar-caption">Your thermal printer can do more than receipts.</p>
       <nav aria-label="Navigasi utama">
-        <button class="nav-button active" data-view="daily"><span class="nav-icon">◫</span> Hari ini</button>
-        <button class="nav-button" data-view="weekly"><span class="nav-icon">▦</span> Minggu ini</button>
-        <button class="nav-button" data-view="history"><span class="nav-icon">◷</span> Riwayat daftar</button>
-        <button class="nav-button" data-view="printer"><span class="nav-icon">▤</span> Printer</button>
-        <button class="nav-button" data-view="settings"><span class="nav-icon">⚙</span> Settings</button>
+        <div class="nav-group" data-group="todo">
+          <button class="nav-parent" type="button" aria-expanded="true" aria-controls="todoNav"><span class="nav-icon">☑</span><span>To Do List</span><span class="nav-chevron" aria-hidden="true">⌄</span></button>
+          <div id="todoNav" class="nav-children">
+            <button class="nav-button active" type="button" data-view="daily"><span class="nav-icon">◫</span> Daily</button>
+            <button class="nav-button" type="button" data-view="weekly"><span class="nav-icon">▦</span> Weekly</button>
+            <button class="nav-button" type="button" data-view="history"><span class="nav-icon">◷</span> History</button>
+          </div>
+        </div>
+        <div class="nav-group" data-group="settings">
+          <button class="nav-parent" type="button" aria-expanded="false" aria-controls="settingsNav"><span class="nav-icon">⚙</span><span>Settings</span><span class="nav-chevron" aria-hidden="true">⌄</span></button>
+          <div id="settingsNav" class="nav-children" hidden>
+            <button class="nav-button" type="button" data-view="printer"><span class="nav-icon">▤</span> Printer</button>
+            <button class="nav-button" type="button" data-view="settings"><span class="nav-icon">↻</span> Update</button>
+          </div>
+        </div>
       </nav>
       <div class="sidebar-bottom">
         <span class="status-dot"></span> Tersimpan di laptop ini
@@ -26,7 +36,7 @@
 
     <main class="main-content">
       <header class="topbar">
-        <div><div class="eyebrow">PRINT-TO-DO</div><h1 id="pageTitle">Hari ini</h1></div>
+        <h1 id="pageTitle">Daily</h1>
         <div class="topbar-actions">
           <button id="newListButton" class="button button-primary" type="button">+ Daftar baru</button>
         </div>

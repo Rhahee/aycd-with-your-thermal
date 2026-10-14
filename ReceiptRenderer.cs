@@ -92,7 +92,7 @@ internal static class ReceiptRenderer
         y += 4;
         rows.Add(new Row(RowKind.Rule, "", y, 2));
         y += 13;
-        Add(RowKind.Footer, "Print-To-Do", smallFont, width - margin * 2, 0);
+        Add(RowKind.Footer, "AYCD Printer", smallFont, width - margin * 2, 0);
         var heightPixels = (int)Math.Ceiling(y + 24);
         if (heightPixels > 30000)
             throw new InvalidOperationException("Daftar terlalu panjang untuk satu cetakan.");
