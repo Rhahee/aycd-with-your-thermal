@@ -38,3 +38,15 @@
 .block-choices button{border:1px solid #d6e4d5;border-radius:8px;background:#fff;color:#2d6b51;padding:8px 10px;font-size:12px;font-weight:700}
 .block-choices button:hover{background:#e9f3e7}
 @media(max-width:700px){.block-row{gap:4px;padding:5px}.move-block,.delete-block{width:24px}}
+.editor-stack,#taskGroups{display:grid;gap:16px}
+.title-card,.section-card{background:#fff;border:1px solid #e1e6dc;box-shadow:0 8px 28px #1930220a;border-radius:18px;padding:24px}
+.title-card label{display:block;font-size:12px;font-weight:800;color:#65766b;margin-bottom:8px}
+.title-card .editor-meta{margin-bottom:0}
+.section-header{display:flex;align-items:center;gap:8px;border-bottom:1px solid #ebefe9;margin-bottom:12px;padding-bottom:12px}
+.section-title{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#294d35;font-family:inherit;font-size:18px;font-weight:800;padding:8px 2px}
+.section-title::placeholder{color:#91a194}
+.section-header .move-block,.section-header .delete-block{margin-top:2px}
+.section-card .block-add{margin-top:10px}
+.add-section{width:100%;border:1px dashed #a9c9b2;background:#f5faf4;color:#2d6b51;padding:16px;text-align:center}
+.add-section:hover{background:#eaf4e8}
+@media(max-width:700px){.title-card,.section-card{padding:18px}.section-title{font-size:16px}}

@@ -101,14 +101,24 @@ internal sealed class AppStore
             throw new ArgumentException("Tanggal tidak valid.");
         if (list.Kind == "weekly" && date.DayOfWeek != DayOfWeek.Monday)
             throw new ArgumentException("Tanggal daftar mingguan harus hari Senin.");
-        if (list.Title is null || list.Title.Length > 100 || list.Tasks is null || list.Tasks.Count > 200)
+        if (list.Title is null || list.Title.Length > 100 || list.Tasks is null || list.Tasks.Count > 200 ||
+            list.Sections is null || list.Sections.Count > 50)
             throw new ArgumentException("Daftar terlalu panjang.");
+        var sectionIds = new HashSet<string>();
+        foreach (var section in list.Sections)
+        {
+            if (section?.Id is null || !Guid.TryParse(section.Id, out _) ||
+                !sectionIds.Add(section.Id) || section.Title is null || section.Title.Length > 100)
+                throw new ArgumentException("Ada section yang tidak valid.");
+        }
         var taskIds = new HashSet<string>();
         foreach (var task in list.Tasks)
         {
-            if (task.Id is null || task.Id.Length is < 1 or > 64 || !taskIds.Add(task.Id) ||
+            if (task?.Id is null || task.Id.Length is < 1 or > 64 || !taskIds.Add(task.Id) ||
                 task.Type is not ("checklist" or "heading" or "note") ||
                 task.Text is null || task.Text.Length > 500 || task.Day is < -1 or > 6 ||
+                task.SectionId is null ||
+                (list.Sections.Count > 0 && !sectionIds.Contains(task.SectionId)) ||
                 (list.Kind == "daily" && task.Day != -1))
                 throw new ArgumentException("Ada tugas yang tidak valid.");
         }

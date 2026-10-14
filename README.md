@@ -1,6 +1,6 @@
 # All You Can Do with Your Thermal Printer
 
-Aplikasi daftar tugas harian dan mingguan untuk Windows. Antarmuka HTML/CSS/JavaScript berjalan di WebView2; aplikasi C# WinForms menyimpan daftar secara lokal dan mengirim hasil cetak ESC/POS melalui port serial Bluetooth.
+Aplikasi daftar tugas untuk Windows. Antarmuka HTML/CSS/JavaScript berjalan di WebView2; aplikasi C# WinForms menyimpan daftar secara lokal dan mengirim hasil cetak ESC/POS melalui port serial Bluetooth.
 
 ## Menjalankan
 
@@ -10,7 +10,7 @@ Aplikasi daftar tugas harian dan mingguan untuk Windows. Antarmuka HTML/CSS/Java
 
 ## Menyusun daftar dengan blok
 
-Pada halaman **Daily** atau **Weekly**, buat daftar lalu gunakan **+ Tambah blok** untuk menambahkan **Checklist**, **Judul bagian**, atau **Catatan**. Gunakan tombol panah pada blok untuk mengubah urutan dalam kelompok hari yang sama. Daftar lama otomatis terbuka sebagai blok checklist. Pratinjau mengikuti urutan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi.
+Pada halaman **Daily**, buat daftar lalu isi judul pada card tersendiri. Gunakan **+ Tambah section** untuk membuat card bagian baru, misalnya Senin, Selasa, dan seterusnya untuk rencana mingguan. Setiap section memiliki judul dan dapat berisi blok **Checklist**, **Judul bagian**, serta **Catatan** melalui **+ Tambah blok**. Tombol panah mengubah urutan section atau blok di dalam section. Daftar lama, termasuk daftar Weekly, tetap dapat dibuka dari **History**. Pratinjau mengikuti urutan section dan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi.
 
 Data disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Menghapus aplikasi tidak menghapus file tersebut. Salin file ini untuk mencadangkan daftar secara manual.
 

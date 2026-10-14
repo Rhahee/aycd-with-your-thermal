@@ -43,11 +43,6 @@ function isoDate(date) {
 }
 
 function parseDate(value) { return new Date(`${value}T12:00:00`); }
-function weekStart(value) {
-  const date = parseDate(value);
-  date.setDate(date.getDate() - (date.getDay() + 6) % 7);
-  return isoDate(date);
-}
 function humanDate(value) {
   return parseDate(value).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
@@ -60,8 +55,7 @@ function weekLabel(value) {
 function createId() { return crypto.randomUUID().replaceAll("-", ""); }
 function currentList() { return state.lists.find((list) => list.id === selectedId) || null; }
 function chosenDate() {
-  const value = $("planDate").value || isoDate(new Date());
-  return view === "weekly" ? weekStart(value) : value;
+  return $("planDate").value || isoDate(new Date());
 }
 
 async function start() {
@@ -87,17 +81,16 @@ function bindEvents() {
     document.querySelectorAll(".nav-group").forEach((group) =>
       setNavGroup(group, group.contains(button)));
     if (view === "daily") $("planDate").value = isoDate(new Date());
-    if (view === "weekly") $("planDate").value = weekStart(isoDate(new Date()));
-    if (view === "daily" || view === "weekly") selectForDate();
+    if (view === "daily") selectForDate();
     render();
   }));
   $("planDate").addEventListener("change", () => {
-    if (view === "weekly") $("planDate").value = weekStart($("planDate").value);
     selectForDate();
     render();
   });
   $("newListButton").addEventListener("click", createList);
   $("emptyCreateButton").addEventListener("click", createList);
+  $("addSection").addEventListener("click", addSection);
   $("listTitle").addEventListener("input", () => {
     const list = currentList();
     if (!list) return;
@@ -126,17 +119,17 @@ function setNavGroup(group, expanded) {
 }
 
 function selectForDate() {
-  const kind = view === "weekly" ? "weekly" : "daily";
   const date = chosenDate();
-  const matches = state.lists.filter((list) => list.kind === kind && list.date === date);
+  const matches = state.lists.filter((list) => list.kind === "daily" && list.date === date);
   matches.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   selectedId = matches[0]?.id || null;
 }
 
 async function createList() {
-  if (view !== "daily" && view !== "weekly") return;
+  if (view !== "daily") return;
   const now = new Date().toISOString();
-  const list = { id: createId(), kind: view, date: chosenDate(), title: "", tasks: [], createdAt: now, updatedAt: now };
+  const list = { id: createId(), kind: "daily", date: chosenDate(), title: "",
+    sections: [{ id: createId(), title: "" }], tasks: [], createdAt: now, updatedAt: now };
   try {
     const saved = await bridge("saveList", { list });
     state.lists.push(saved);
@@ -166,13 +159,14 @@ function render() {
   document.querySelectorAll(".nav-group").forEach((group) =>
     group.querySelector(".nav-parent").classList.toggle("current",
       !!group.querySelector(`.nav-button[data-view="${view}"]`)));
-  const planner = view === "daily" || view === "weekly";
+  const planner = view === "daily";
   $("plannerView").classList.toggle("hidden", !planner);
   $("historyView").classList.toggle("hidden", view !== "history");
   $("printerView").classList.toggle("hidden", view !== "printer");
   $("settingsView").classList.toggle("hidden", view !== "settings");
   $("newListButton").classList.toggle("hidden", !planner);
-  $("pageTitle").textContent = ({ daily: "Daily", weekly: "Weekly", history: "History", printer: "Printer", settings: "Update" })[view];
+  $("pageTitle").textContent = ({ daily: currentList()?.kind === "weekly" ? "Weekly · History" : "Daily",
+    history: "History", printer: "Printer", settings: "Update" })[view];
   if (planner) renderPlanner();
   if (view === "history") renderHistory();
   if (view === "printer") renderPrinter();
@@ -221,16 +215,17 @@ async function runUpdate() {
 }
 
 function renderPlanner() {
-  const weekly = view === "weekly";
-  $("dateLabel").textContent = weekly ? "Pilih minggu" : "Pilih tanggal";
-  $("dateHint").textContent = weekly ? `Senin–Minggu, ${weekLabel(chosenDate())}` : humanDate(chosenDate());
-  $("paperBadge").textContent = `${state.printer.paperWidthMm} mm`;
   const list = currentList();
+  const weekly = list?.kind === "weekly";
+  $("dateLabel").textContent = weekly ? "Pilih minggu" : "Pilih tanggal";
+  $("dateHint").textContent = weekly ? `Senin–Minggu, ${weekLabel(list.date)}` : humanDate(chosenDate());
+  $("paperBadge").textContent = `${state.printer.paperWidthMm} mm`;
   $("emptyPlan").classList.toggle("hidden", !!list);
   $("editor").classList.toggle("hidden", !list);
   $("refreshPreview").disabled = !list;
   $("printButton").disabled = !list;
   if (list) {
+    if (ensureSections(list)) persistList();
     $("listTitle").value = list.title;
     $("listDateText").textContent = weekly ? weekLabel(list.date) : humanDate(list.date);
     renderTasks(list);
@@ -242,27 +237,83 @@ function renderPlanner() {
   }
 }
 
+function ensureSections(list) {
+  if (list.sections?.length) return false;
+  if (list.sections && list.tasks.length === 0) return false;
+  const groups = list.kind === "weekly"
+    ? [[-1, "Tugas umum"], ...dayNames.map((name, index) => [index, name])]
+    : [[-1, "Tugas hari ini"]];
+  list.sections = groups.filter(([day]) => list.tasks.some((task) => task.day === day))
+    .map(([day, title]) => {
+      const section = { id: createId(), title };
+      list.tasks.filter((task) => task.day === day).forEach((task) => { task.sectionId = section.id; });
+      return section;
+    });
+  if (!list.sections.length) list.sections.push({ id: createId(), title: "" });
+  return true;
+}
+
 function renderTasks(list) {
   const container = $("taskGroups");
   container.replaceChildren();
-  if (list.kind === "daily") addGroup(container, list, -1, "Tugas hari ini");
-  else {
-    addGroup(container, list, -1, "Tugas umum minggu ini");
-    dayNames.forEach((name, index) => addGroup(container, list, index, name));
-  }
+  list.sections.forEach((section, index) => addSectionCard(container, list, section, index));
   updateTaskCount();
 }
 
-function addGroup(container, list, day, heading) {
+function addSectionCard(container, list, section, index) {
   const group = document.createElement("section");
-  group.className = "task-group";
+  group.className = "section-card";
   const header = document.createElement("div");
-  header.className = "group-heading";
-  const title = document.createElement("h3");
-  title.textContent = heading;
-  header.append(title);
+  header.className = "section-header";
+  const heading = document.createElement("input");
+  heading.type = "text";
+  heading.className = "section-title";
+  heading.maxLength = 100;
+  heading.placeholder = `Judul section ${index + 1}`;
+  heading.value = section.title;
+  heading.setAttribute("aria-label", `Judul section ${index + 1}`);
+  heading.addEventListener("input", () => {
+    section.title = heading.value;
+    persistList();
+    schedulePreview();
+  });
+  header.append(heading);
+  for (const [direction, label, disabled] of [[-1, "Naikkan section", index === 0],
+    [1, "Turunkan section", index === list.sections.length - 1]]) {
+    const move = document.createElement("button");
+    move.type = "button";
+    move.className = "move-block";
+    move.textContent = direction < 0 ? "↑" : "↓";
+    move.title = label;
+    move.setAttribute("aria-label", label);
+    move.disabled = disabled;
+    move.addEventListener("click", () => {
+      const next = index + direction;
+      [list.sections[index], list.sections[next]] = [list.sections[next], list.sections[index]];
+      renderTasks(list);
+      persistList();
+      schedulePreview();
+    });
+    header.append(move);
+  }
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "delete-block";
+  remove.textContent = "×";
+  remove.title = "Hapus section";
+  remove.setAttribute("aria-label", "Hapus section");
+  remove.addEventListener("click", () => {
+    const count = list.tasks.filter((task) => task.sectionId === section.id).length;
+    if (count && !confirm(`Hapus section ini beserta ${count} blok di dalamnya?`)) return;
+    list.sections = list.sections.filter((item) => item.id !== section.id);
+    list.tasks = list.tasks.filter((task) => task.sectionId !== section.id);
+    renderTasks(list);
+    persistList();
+    schedulePreview();
+  });
+  header.append(remove);
   group.append(header);
-  const blocks = list.tasks.filter((task) => task.day === day);
+  const blocks = list.tasks.filter((task) => task.sectionId === section.id);
   blocks.forEach((task, index) => group.append(blockRow(task, index, blocks.length)));
   const addMenu = document.createElement("details");
   addMenu.className = "block-add";
@@ -276,7 +327,7 @@ function addGroup(container, list, day, heading) {
     button.type = "button";
     button.textContent = label;
     button.addEventListener("click", () => {
-      addBlock(list, day, type);
+      addBlock(list, section.id, type);
     });
     choices.append(button);
   }
@@ -285,9 +336,20 @@ function addGroup(container, list, day, heading) {
   container.append(group);
 }
 
-function addBlock(list, day, type) {
+function addSection() {
+  const list = currentList();
+  if (!list) return;
+  if (list.sections.length >= 50) { showToast("Maksimal 50 section dalam satu daftar.", true); return; }
+  const section = { id: createId(), title: "" };
+  list.sections.push(section);
+  renderTasks(list);
+  $("taskGroups").lastElementChild?.querySelector(".section-title")?.focus();
+  persistList();
+}
+
+function addBlock(list, sectionId, type) {
   if (list.tasks.length >= 200) { showToast("Maksimal 200 blok dalam satu daftar.", true); return; }
-  const task = { id: createId(), type, text: "", day, completed: false };
+  const task = { id: createId(), type, text: "", sectionId, day: -1, completed: false };
   list.tasks.push(task);
   renderTasks(list);
   document.querySelector(`[data-block-id="${task.id}"] .block-text`)?.focus();
@@ -335,7 +397,7 @@ function blockRow(task, index, count) {
     if (event.key === "Enter" && task.type !== "note" && !event.shiftKey) {
       event.preventDefault();
       const list = currentList();
-      if (list) addBlock(list, task.day, "checklist");
+      if (list) addBlock(list, task.sectionId, "checklist");
     }
   });
   row.append(input);
@@ -376,7 +438,7 @@ function resizeBlockText(input) {
 function moveBlock(task, direction) {
   const list = currentList();
   if (!list) return;
-  const siblings = list.tasks.filter((item) => item.day === task.day);
+  const siblings = list.tasks.filter((item) => item.sectionId === task.sectionId);
   const index = siblings.findIndex((item) => item.id === task.id);
   const neighbor = siblings[index + direction];
   if (!neighbor) return;
@@ -458,7 +520,7 @@ function renderHistory() {
     open.className = "button button-ghost";
     open.textContent = "Buka";
     open.addEventListener("click", () => {
-      view = list.kind;
+      view = "daily";
       document.querySelectorAll(".nav-group").forEach((group) =>
         setNavGroup(group, group.dataset.group === "todo"));
       $("planDate").value = list.date;

@@ -64,6 +64,26 @@ try
             "Judul bagian dan catatan tidak muncul pada cetakan.");
     }
 
+    var firstSection = new TodoSection { Title = "Pagi" };
+    var secondSection = new TodoSection { Title = "Sore" };
+    daily.Sections = [firstSection, secondSection];
+    daily.Tasks[0].SectionId = firstSection.Id;
+    daily.Tasks[1].SectionId = firstSection.Id;
+    daily.Tasks[2].SectionId = secondSection.Id;
+    store.SaveList(daily);
+    var savedSections = new AppStore(directory).State.Lists.Single();
+    Assert(savedSections.Sections.Select(section => section.Title).SequenceEqual(["Pagi", "Sore"]) &&
+           savedSections.Tasks[2].SectionId == secondSection.Id,
+        "Section dan hubungan bloknya tidak tersimpan.");
+    using (var ordered = ReceiptRenderer.Render(daily, new PrinterSettings()))
+    {
+        daily.Sections.Reverse();
+        using var reordered = ReceiptRenderer.Render(daily, new PrinterSettings());
+        Assert(!Hash(ordered).SequenceEqual(Hash(reordered)),
+            "Urutan section tidak mengubah pratinjau cetak.");
+        daily.Sections.Reverse();
+    }
+
     var weekly = new TodoList
     {
         Kind = "weekly",

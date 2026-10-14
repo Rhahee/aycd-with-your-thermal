@@ -58,7 +58,20 @@ internal static class ReceiptRenderer
         y += 17;
 
         var addedBlocks = 0;
-        if (list.Kind == "daily")
+        if (list.Sections.Count > 0)
+        {
+            foreach (var section in list.Sections)
+            {
+                var blocks = list.Tasks.Where(task => task.SectionId == section.Id &&
+                    !string.IsNullOrWhiteSpace(task.Text)).ToList();
+                if (blocks.Count == 0) continue;
+                if (!string.IsNullOrWhiteSpace(section.Title))
+                    Add(RowKind.Section, section.Title.Trim(), sectionFont, width - margin * 2, 7);
+                foreach (var block in blocks) AddBlock(block);
+                y += 5;
+            }
+        }
+        else if (list.Kind == "daily")
         {
             foreach (var task in list.Tasks.Where(task => !string.IsNullOrWhiteSpace(task.Text)))
             {

@@ -17,7 +17,6 @@
           <button class="nav-parent" type="button" aria-expanded="true" aria-controls="todoNav"><span class="nav-icon">☑</span><span>To Do List</span><span class="nav-chevron" aria-hidden="true">⌄</span></button>
           <div id="todoNav" class="nav-children">
             <button class="nav-button active" type="button" data-view="daily"><span class="nav-icon">◫</span> Daily</button>
-            <button class="nav-button" type="button" data-view="weekly"><span class="nav-icon">▦</span> Weekly</button>
             <button class="nav-button" type="button" data-view="history"><span class="nav-icon">◷</span> History</button>
           </div>
         </div>
@@ -54,11 +53,14 @@
             <p>Buat daftar untuk tanggal ini, lalu tulis hal yang ingin Anda kerjakan.</p>
             <button id="emptyCreateButton" class="button button-primary" type="button">Buat daftar</button>
           </div>
-          <div id="editor" class="editor-card hidden">
-            <label for="listTitle">Judul daftar</label>
-            <input id="listTitle" class="title-input" maxlength="100" placeholder="Contoh: Fokus hari ini">
-            <div class="editor-meta"><span id="listDateText"></span><span id="taskCount"></span></div>
+          <div id="editor" class="editor-stack hidden">
+            <div class="title-card">
+              <label for="listTitle">Judul daftar</label>
+              <input id="listTitle" class="title-input" maxlength="100" placeholder="Contoh: Fokus hari ini">
+              <div class="editor-meta"><span id="listDateText"></span><span id="taskCount"></span></div>
+            </div>
             <div id="taskGroups"></div>
+            <button id="addSection" class="button add-section" type="button">+ Tambah section</button>
           </div>
         </div>
         <aside class="preview-column">
