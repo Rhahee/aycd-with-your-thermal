@@ -1,0 +1,9 @@
+bin/
+dist/
+dist-candidate/
+obj/
+tests/bin/
+tests/obj/
+.vs/
+*.user
+.codex-remote-attachments/

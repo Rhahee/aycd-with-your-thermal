@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+  <title>Print-To-Do</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-icon">✓</span><span>PRINT<span class="brand-accent">/</span>TO-DO</span></div>
+      <p class="sidebar-caption">Rencana kecil, langkah nyata.</p>
+      <nav aria-label="Navigasi utama">
+        <button class="nav-button active" data-view="daily"><span class="nav-icon">◫</span> Hari ini</button>
+        <button class="nav-button" data-view="weekly"><span class="nav-icon">▦</span> Minggu ini</button>
+        <button class="nav-button" data-view="history"><span class="nav-icon">◷</span> Riwayat daftar</button>
+        <button class="nav-button" data-view="printer"><span class="nav-icon">▤</span> Printer</button>
+        <button class="nav-button" data-view="settings"><span class="nav-icon">⚙</span> Settings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="status-dot"></span> Tersimpan di laptop ini
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div><div class="eyebrow">PRINT-TO-DO</div><h1 id="pageTitle">Hari ini</h1></div>
+        <div class="topbar-actions">
+          <button id="newListButton" class="button button-primary" type="button">+ Daftar baru</button>
+        </div>
+      </header>
+
+      <section id="plannerView" class="planner-layout">
+        <div class="editor-column">
+          <div class="toolbar-card">
+            <div><label id="dateLabel" for="planDate">Tanggal</label><input id="planDate" type="date"></div>
+            <span id="dateHint" class="muted"></span>
+          </div>
+          <div id="emptyPlan" class="empty-card">
+            <div class="empty-symbol">□</div>
+            <h2>Belum ada daftar</h2>
+            <p>Buat daftar untuk tanggal ini, lalu tulis hal yang ingin Anda kerjakan.</p>
+            <button id="emptyCreateButton" class="button button-primary" type="button">Buat daftar</button>
+          </div>
+          <div id="editor" class="editor-card hidden">
+            <label for="listTitle">Judul daftar</label>
+            <input id="listTitle" class="title-input" maxlength="100" placeholder="Contoh: Fokus hari ini">
+            <div class="editor-meta"><span id="listDateText"></span><span id="taskCount"></span></div>
+            <div id="taskGroups"></div>
+          </div>
+        </div>
+        <aside class="preview-column">
+          <div class="preview-header"><div><div class="eyebrow">HASIL CETAK</div><h2>Pratinjau</h2></div><span id="paperBadge" class="badge">80 mm</span></div>
+          <p class="preview-note">Kotak centang di kertas selalu kosong.</p>
+          <div class="paper-stage"><div id="previewPlaceholder" class="preview-placeholder">Buat daftar untuk melihat pratinjau.</div><img id="previewImage" alt="Pratinjau hasil cetak" class="hidden"></div>
+          <div class="preview-actions"><button id="refreshPreview" class="button button-secondary" type="button" disabled>Perbarui</button><button id="printButton" class="button button-primary" type="button" disabled>Cetak daftar</button></div>
+        </aside>
+      </section>
+
+      <section id="historyView" class="content-card hidden">
+        <div class="section-heading"><div><div class="eyebrow">TERSIMPAN LOKAL</div><h2>Riwayat daftar</h2></div><span id="historyCount" class="badge">0 daftar</span></div>
+        <p class="muted">Buka daftar lama untuk mengubah atau mencetaknya lagi.</p>
+        <div id="historyList" class="history-list"></div>
+      </section>
+
+      <section id="printerView" class="content-card printer-card hidden">
+        <div class="section-heading"><div><div class="eyebrow">BLUETOOTH SERIAL</div><h2>Pengaturan printer</h2></div><span class="badge">ESC/POS</span></div>
+        <p class="muted">Pasangkan printer melalui pengaturan Bluetooth Windows, lalu pilih port COM keluar milik printer. Jika ada beberapa perangkat, cocokkan alamat Bluetooth di pengaturan Windows dengan halaman self-test printer.</p>
+        <div class="profile-switcher"><div class="field"><label for="profileSelect">Profil tersimpan</label><select id="profileSelect"></select></div><button id="newProfile" class="button button-secondary" type="button">+ Profil baru</button><button id="deleteProfile" class="button button-ghost button-danger" type="button">Hapus profil</button></div>
+        <div class="form-grid">
+          <div class="field"><label for="printerName">Nama printer</label><input id="printerName" maxlength="80" placeholder="Contoh: RPP02N"></div>
+          <div class="field"><label for="portName">Port Bluetooth</label><div class="inline-field"><select id="portName"></select><button id="reloadPorts" class="button button-secondary" type="button">Muat ulang</button></div></div>
+          <div class="field"><label for="paperWidth">Lebar kertas</label><select id="paperWidth"><option value="80">80 mm</option><option value="58">58 mm</option></select></div>
+          <div class="field"><label for="printableDots">Lebar area cetak (dot)</label><input id="printableDots" type="number" min="256" max="832" step="8"><small>Umumnya 576 dot untuk 80 mm atau 384 dot untuk 58 mm. Ubah bila tepi cetakan terpotong.</small></div>
+          <div class="field"><label for="baudRate">Kecepatan port Windows</label><select id="baudRate"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option><option>460800</option></select><small>COM6 berhasil mencetak pada 115200. Angka BT Baud 460800 di self-test printer berbeda dari batas port Windows.</small></div>
+        </div>
+        <div class="printer-actions"><button id="savePrinter" class="button button-primary" type="button">Simpan pengaturan</button><button id="testPrint" class="button button-secondary" type="button">Cetak halaman uji</button></div>
+        <p class="fine-print">Pesan “data terkirim” berarti komputer berhasil menulis ke port; periksa kertas untuk memastikan printer benar-benar mencetak.</p>
+      </section>
+
+      <section id="settingsView" class="content-card hidden">
+        <div class="section-heading"><div><div class="eyebrow">PEMBARUAN APLIKASI</div><h2>Settings</h2></div><span class="badge">Git</span></div>
+        <p class="muted settings-intro">Simpan alamat repo sumber Print-To-Do. Saat tombol update ditekan, aplikasi mengambil perubahan, membangun rilis baru, lalu membuka ulang aplikasi. Daftar dan profil printer tetap tersimpan di laptop.</p>
+        <div class="form-grid settings-grid">
+          <div class="field settings-url"><label for="repositoryUrl">URL repo</label><input id="repositoryUrl" type="url" spellcheck="false" placeholder="https://github.com/nama/print-to-do.git"><small>Isi setelah repo dibuat. URL HTTPS, SSH, atau file:// didukung.</small></div>
+          <div class="field"><label for="repositoryBranch">Branch (opsional)</label><input id="repositoryBranch" spellcheck="false" placeholder="Otomatis dari repo"><small>Kosongkan untuk memakai branch utama repo.</small></div>
+        </div>
+        <div class="printer-actions"><button id="saveUpdateSettings" class="button button-secondary" type="button">Simpan repo</button><button id="runUpdate" class="button button-primary" type="button">Periksa &amp; pasang update</button></div>
+        <p id="updateStatus" class="update-status" role="status" aria-live="polite">Repo belum disiapkan.</p>
+        <p id="installedCommit" class="fine-print"></p>
+        <p class="fine-print">Gunakan repo yang Anda percayai: kode dari repo akan dibangun dan dijalankan di laptop ini.</p>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
