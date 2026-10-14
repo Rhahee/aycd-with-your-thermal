@@ -12,7 +12,7 @@ Data disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Menghapus aplikasi tidak
 
 ## Update dari repo Git
 
-Buka **Settings** lalu klik **Periksa & pasang update**. Repo `https://github.com/Rhahee/aycd-with-your-thermal.git` dan branch `main` sudah terisi sebagai sumber bawaan; URL dan branch dapat diganti di Settings. Aplikasi melakukan clone pada penggunaan pertama, kemudian `git pull --ff-only` untuk update berikutnya. Jika ada commit baru, aplikasi membangun rilis, mengganti `dist\PrintToDo.exe` dan folder `dist\assets`, lalu membuka ulang dirinya. Versi `.exe` sebelumnya disimpan sebagai `PrintToDo.exe.previous`. Data daftar dan profil printer tetap berada di `%LOCALAPPDATA%\PrintToDo\state.json`.
+Buka **Settings** lalu klik **Cek Update** untuk memeriksa repo `https://github.com/Rhahee/aycd-with-your-thermal.git` pada branch `main`. Aplikasi melakukan clone pada penggunaan pertama, kemudian `git pull --ff-only` untuk pemeriksaan berikutnya. Jika ada commit baru, tombol **Update** aktif. Klik tombol tersebut untuk membangun rilis, mengganti `PrintToDo.exe` dan folder `assets` di lokasi aplikasi terpasang, lalu membuka ulang aplikasi. Versi `.exe` sebelumnya disimpan sebagai `PrintToDo.exe.previous`. Data daftar dan profil printer tetap berada di `%LOCALAPPDATA%\PrintToDo\state.json`.
 
 Proses update memerlukan Git, SDK .NET 10, akses ke repo, dan hak tulis pada folder `dist`. Gunakan repo yang Anda percayai karena kode dari repo akan dibangun dan dijalankan di laptop.
 

@@ -1,5 +1,5 @@
 #define MyAppName "All You Can Do with Your Thermal Printer"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppExe "PrintToDo.exe"
 
 [Setup]

@@ -10,13 +10,15 @@ let previewTimer = null;
 let previewGeneration = 0;
 let toastTimer = null;
 let editingPrinter = null;
+let updateAvailable = false;
+let updateBusy = false;
 
 if (!window.chrome?.webview) {
   document.body.textContent = "Aplikasi ini perlu dibuka melalui Print-To-Do di Windows.";
 } else {
   window.chrome.webview.addEventListener("message", ({ data }) => {
     if (data.type === "updateProgress") {
-      $("updateStatus").textContent = data.message;
+      showToast(data.message);
       return;
     }
     const request = pending.get(data.id);
@@ -103,7 +105,7 @@ function bindEvents() {
   $("profileSelect").addEventListener("change", activateProfile);
   $("newProfile").addEventListener("click", newProfile);
   $("deleteProfile").addEventListener("click", deleteProfile);
-  $("saveUpdateSettings").addEventListener("click", saveUpdateSettings);
+  $("checkUpdate").addEventListener("click", checkUpdate);
   $("runUpdate").addEventListener("click", runUpdate);
 }
 
@@ -159,56 +161,43 @@ function render() {
 }
 
 function renderSettings() {
-  $("repositoryUrl").value = state.update?.repositoryUrl || "";
-  $("repositoryBranch").value = state.update?.branch || "";
-  $("updateStatus").textContent = state.update?.repositoryUrl
-    ? "Repo siap diperiksa. Tekan tombol update saat Anda ingin mengambil versi baru."
-    : "Repo belum disiapkan.";
-  bridge("updateStatus").then((result) => {
-    $("installedCommit").textContent = result.installedCommit
-      ? `Versi terpasang: ${result.installedCommit.slice(0, 12)}`
-      : "Versi awal belum ditautkan ke commit repo.";
-  }).catch((error) => showToast(error.message, true));
+  $("checkUpdate").disabled = updateBusy;
+  $("runUpdate").disabled = updateBusy || !updateAvailable;
 }
 
-function updateSettingsFromForm() {
-  return { repositoryUrl: $("repositoryUrl").value.trim(), branch: $("repositoryBranch").value.trim() };
-}
-
-async function saveUpdateSettings() {
+async function checkUpdate() {
+  if (updateBusy) return;
+  updateBusy = true;
+  updateAvailable = false;
+  $("checkUpdate").textContent = "Memeriksa…";
+  renderSettings();
   try {
-    state.update = await bridge("saveUpdateSettings", { settings: updateSettingsFromForm() });
-    $("repositoryUrl").value = state.update.repositoryUrl;
-    $("repositoryBranch").value = state.update.branch;
-    $("updateStatus").textContent = state.update.repositoryUrl
-      ? "Alamat repo tersimpan." : "Repo belum disiapkan.";
-    showToast("Pengaturan repo disimpan.");
-  } catch (error) { showToast("Gagal menyimpan repo: " + error.message, true); }
+    const result = await bridge("checkUpdate");
+    updateAvailable = result.status === "available";
+    showToast(updateAvailable ? "Pembaruan tersedia. Tekan Update untuk memasangnya." : "Aplikasi sudah versi terbaru.");
+  } catch (error) {
+    showToast("Gagal memeriksa update: " + error.message, true);
+  } finally {
+    updateBusy = false;
+    $("checkUpdate").textContent = "Cek Update";
+    renderSettings();
+  }
 }
 
 async function runUpdate() {
-  const button = $("runUpdate");
-  button.disabled = true;
-  button.textContent = "Memeriksa…";
+  if (updateBusy || !updateAvailable) return;
+  updateBusy = true;
+  $("runUpdate").textContent = "Memperbarui…";
+  renderSettings();
   try {
     await saveChain;
-    state.update = await bridge("saveUpdateSettings", { settings: updateSettingsFromForm() });
-    $("repositoryUrl").value = state.update.repositoryUrl;
-    $("repositoryBranch").value = state.update.branch;
-    const result = await bridge("checkUpdate");
-    if (result.status === "current") {
-      $("updateStatus").textContent = `Sudah versi terbaru (${result.commit.slice(0, 12)}).`;
-      showToast("Aplikasi sudah versi terbaru.");
-      return;
-    }
-    $("updateStatus").textContent = "Memasang rilis baru dan membuka ulang aplikasi…";
     await bridge("installUpdate");
   } catch (error) {
-    $("updateStatus").textContent = "Update gagal: " + error.message;
     showToast("Update gagal: " + error.message, true);
   } finally {
-    button.disabled = false;
-    button.textContent = "Periksa & pasang update";
+    updateBusy = false;
+    $("runUpdate").textContent = "Update";
+    renderSettings();
   }
 }
 

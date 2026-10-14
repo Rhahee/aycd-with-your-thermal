@@ -51,7 +51,7 @@ internal static class UpdateService
 
     public static async Task<UpdateCheckResult> PrepareAsync(
         UpdateSettings settings, string appDirectory, Action<string> progress,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool prepareRelease = true)
     {
         ValidateSettings(settings);
         var url = settings.RepositoryUrl.Trim();
@@ -116,6 +116,9 @@ internal static class UpdateService
             progress("Aplikasi sudah menggunakan commit terbaru.");
             return new UpdateCheckResult("current", commit, null);
         }
+
+        if (!prepareRelease)
+            return new UpdateCheckResult("available", commit, null);
 
         progress("Membangun aplikasi dari repo…");
         if (Directory.Exists(stage)) Directory.Delete(stage, true);

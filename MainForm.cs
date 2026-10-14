@@ -14,6 +14,7 @@ internal sealed class MainForm : Form
     private readonly SemaphoreSlim _printGate = new(1, 1);
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private PreparedUpdate? _preparedUpdate;
+    private bool _updateAvailable;
 
     public MainForm()
     {
@@ -122,16 +123,28 @@ internal sealed class MainForm : Form
                     try
                     {
                         _preparedUpdate = null;
-                        var result = await UpdateService.PrepareAsync(_store.State.Update,
-                            AppContext.BaseDirectory, PostUpdateProgress);
-                        _preparedUpdate = result.Prepared;
+                        _updateAvailable = false;
+                        var result = await UpdateService.PrepareAsync(new UpdateSettings(),
+                            AppContext.BaseDirectory, PostUpdateProgress, prepareRelease: false);
+                        _updateAvailable = result.Status == "available";
                         data = new { result.Status, result.Commit };
                     }
                     finally { _updateGate.Release(); }
                     break;
                 case "installUpdate":
-                    if (_preparedUpdate is null || !File.Exists(_preparedUpdate.StagedExe))
-                        throw new InvalidOperationException("Belum ada rilis update yang siap dipasang.");
+                    if (!_updateAvailable)
+                        throw new InvalidOperationException("Tekan Cek Update terlebih dahulu.");
+                    if (!await _updateGate.WaitAsync(0))
+                        throw new InvalidOperationException("Update sedang berjalan.");
+                    try
+                    {
+                        _preparedUpdate = null;
+                        var release = await UpdateService.PrepareAsync(new UpdateSettings(),
+                            AppContext.BaseDirectory, PostUpdateProgress);
+                        _preparedUpdate = release.Prepared
+                            ?? throw new InvalidOperationException("Aplikasi sudah versi terbaru. Tekan Cek Update lagi.");
+                    }
+                    finally { _updateGate.Release(); }
                     data = "Aplikasi akan dibuka ulang setelah update terpasang.";
                     break;
                 case "preview":

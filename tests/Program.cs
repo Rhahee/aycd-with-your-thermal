@@ -160,6 +160,13 @@ try
         Environment.SpecialFolder.LocalApplicationData), "PrintToDo", "Updates", workspaceKey);
     try
     {
+        var checkMessages = new List<string>();
+        var checkedUpdate = await UpdateService.PrepareAsync(fixtureSettings, install,
+            checkMessages.Add, prepareRelease: false);
+        Assert(checkedUpdate.Status == "available" && checkedUpdate.Prepared is null &&
+               !Directory.Exists(Path.Combine(updateWorkspace, "stage")) &&
+               !checkMessages.Any(message => message.Contains("Membangun")),
+            "Cek Update membangun atau memasang rilis sebelum tombol Update ditekan.");
         var first = await UpdateService.PrepareAsync(fixtureSettings, install, _ => { });
         Assert(first.Status == "ready" && File.Exists(first.Prepared?.StagedExe),
             "Clone dan build pertama gagal.");
