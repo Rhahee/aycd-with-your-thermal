@@ -27,3 +27,9 @@ SDK .NET 10 terpasang lokal di `%LOCALAPPDATA%\Microsoft\dotnet`. Dari PowerShel
 `& "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist`
 
 Hasilnya berada di `dist/`. Jalankan `PrintToDo.exe` dari folder ini agar folder `assets` tersedia. Build ini sudah membawa .NET Desktop Runtime; WebView2 Runtime tetap diperlukan.
+
+## Installer Windows
+
+Jalankan `installer\Build-Installer.ps1` di PowerShell setelah perubahan sumber di-commit pada branch `main`. Skrip membangun aplikasi, menandai commit terpasang untuk tombol update, mengunduh bootstrapper WebView2 resmi dari Microsoft bila belum ada, memeriksa tanda tangan digitalnya, lalu membuat installer dengan Inno Setup 6. Hasilnya berada di `installer\output\` dan tidak masuk Git.
+
+Installer memasang aplikasi untuk pengguna Windows saat ini di `%LOCALAPPDATA%\Programs\All You Can Do with Your Thermal Printer`, membuat pintasan Start Menu, dan menawarkan pintasan desktop. Lokasi ini dapat ditulis oleh aplikasi saat memasang update dari Settings. Bila WebView2 Runtime belum ada, installer akan memasangnya melalui bootstrapper Microsoft dan memerlukan internet. Data daftar di `%LOCALAPPDATA%\PrintToDo\state.json` tidak dihapus saat aplikasi di-uninstall. Tombol update dari sumber Git masih memerlukan Git dan .NET 10 SDK pada komputer yang menjalankan aplikasi.
