@@ -90,7 +90,8 @@ function bindEvents() {
   });
   $("newListButton").addEventListener("click", createList);
   $("emptyCreateButton").addEventListener("click", createList);
-  $("addSection").addEventListener("click", addSection);
+  document.querySelectorAll("[data-section-type]").forEach((button) =>
+    button.addEventListener("click", () => addSection(button.dataset.sectionType)));
   $("listTitle").addEventListener("input", () => {
     const list = currentList();
     if (!list) return;
@@ -129,7 +130,7 @@ async function createList() {
   if (view !== "daily") return;
   const now = new Date().toISOString();
   const list = { id: createId(), kind: "daily", date: chosenDate(), title: "",
-    sections: [{ id: createId(), title: "" }], tasks: [], createdAt: now, updatedAt: now };
+    sections: [], tasks: [], createdAt: now, updatedAt: now };
   try {
     const saved = await bridge("saveList", { list });
     state.lists.push(saved);
@@ -238,25 +239,40 @@ function renderPlanner() {
 }
 
 function ensureSections(list) {
-  if (list.sections?.length) return false;
-  if (list.sections && list.tasks.length === 0) return false;
-  const groups = list.kind === "weekly"
-    ? [[-1, "Tugas umum"], ...dayNames.map((name, index) => [index, name])]
-    : [[-1, "Tugas hari ini"]];
-  list.sections = groups.filter(([day]) => list.tasks.some((task) => task.day === day))
-    .map(([day, title]) => {
-      const section = { id: createId(), title };
-      list.tasks.filter((task) => task.day === day).forEach((task) => { task.sectionId = section.id; });
-      return section;
-    });
-  if (!list.sections.length) list.sections.push({ id: createId(), title: "" });
-  return true;
+  let changed = false;
+  if (!list.sections?.length && list.tasks.length) {
+    const groups = list.kind === "weekly"
+      ? [[-1, "Tugas umum"], ...dayNames.map((name, index) => [index, name])]
+      : [[-1, ""]];
+    list.sections = groups.filter(([day]) => list.tasks.some((task) => task.day === day))
+      .map(([day, title]) => {
+        const section = { id: createId(), title };
+        list.tasks.filter((task) => task.day === day).forEach((task) => { task.sectionId = section.id; });
+        return section;
+      });
+    changed = true;
+  }
+  list.sections ??= [];
+  for (const section of list.sections) {
+    if (!section.title?.trim()) continue;
+    list.tasks.unshift({ id: createId(), type: "heading", text: section.title.trim(),
+      sectionId: section.id, day: -1, completed: false });
+    section.title = "";
+    changed = true;
+  }
+  return changed;
 }
 
 function renderTasks(list) {
   const container = $("taskGroups");
   container.replaceChildren();
-  list.sections.forEach((section, index) => addSectionCard(container, list, section, index));
+  list.sections.forEach((section, index) => {
+    const separator = document.createElement("div");
+    separator.className = `section-separator ${index === 0 ? "solid" : "dashed"}`;
+    separator.setAttribute("aria-hidden", "true");
+    container.append(separator);
+    addSectionCard(container, list, section, index);
+  });
   updateTaskCount();
 }
 
@@ -264,20 +280,12 @@ function addSectionCard(container, list, section, index) {
   const group = document.createElement("section");
   group.className = "section-card";
   const header = document.createElement("div");
-  header.className = "section-header";
-  const heading = document.createElement("input");
-  heading.type = "text";
-  heading.className = "section-title";
-  heading.maxLength = 100;
-  heading.placeholder = `Judul section ${index + 1}`;
-  heading.value = section.title;
-  heading.setAttribute("aria-label", `Judul section ${index + 1}`);
-  heading.addEventListener("input", () => {
-    section.title = heading.value;
-    persistList();
-    schedulePreview();
-  });
-  header.append(heading);
+  header.className = "section-toolbar";
+  const number = document.createElement("span");
+  number.className = "section-number";
+  number.textContent = String(index + 1).padStart(2, "0");
+  number.setAttribute("aria-label", `Section ${index + 1}`);
+  header.append(number);
   for (const [direction, label, disabled] of [[-1, "Naikkan section", index === 0],
     [1, "Turunkan section", index === list.sections.length - 1]]) {
     const move = document.createElement("button");
@@ -336,19 +344,24 @@ function addSectionCard(container, list, section, index) {
   container.append(group);
 }
 
-function addSection() {
+function addSection(type) {
   const list = currentList();
   if (!list) return;
   if (list.sections.length >= 50) { showToast("Maksimal 50 section dalam satu daftar.", true); return; }
+  if (list.tasks.length >= 250) { showToast("Maksimal 250 blok dalam satu daftar.", true); return; }
   const section = { id: createId(), title: "" };
+  const task = { id: createId(), type, text: "", sectionId: section.id, day: -1, completed: false };
   list.sections.push(section);
+  list.tasks.push(task);
   renderTasks(list);
-  $("taskGroups").lastElementChild?.querySelector(".section-title")?.focus();
+  $("addSection").open = false;
+  document.querySelector(`[data-block-id="${task.id}"] .block-text`)?.focus();
   persistList();
+  schedulePreview();
 }
 
 function addBlock(list, sectionId, type) {
-  if (list.tasks.length >= 200) { showToast("Maksimal 200 blok dalam satu daftar.", true); return; }
+  if (list.tasks.length >= 250) { showToast("Maksimal 250 blok dalam satu daftar.", true); return; }
   const task = { id: createId(), type, text: "", sectionId, day: -1, completed: false };
   list.tasks.push(task);
   renderTasks(list);
@@ -550,6 +563,7 @@ function renderHistory() {
 
 function renderPrinter() {
   editingPrinter = state.printer;
+  $("footerName").value = state.footerName || "";
   const select = $("profileSelect");
   select.replaceChildren();
   for (const profile of state.printerProfiles) {
@@ -610,7 +624,7 @@ function printerFromForm() {
 async function savePrinter() {
   try {
     await saveChain;
-    state = await bridge("savePrinter", { printer: printerFromForm() });
+    state = await bridge("savePrinter", { printer: printerFromForm(), footerName: $("footerName").value });
     renderPrinter();
     showToast("Pengaturan printer disimpan.");
   } catch (error) { showToast(error.message, true); }
@@ -622,7 +636,7 @@ async function testPrint() {
   button.textContent = "Mengirim…";
   try {
     await saveChain;
-    state = await bridge("savePrinter", { printer: printerFromForm() });
+    state = await bridge("savePrinter", { printer: printerFromForm(), footerName: $("footerName").value });
     renderPrinter();
     await bridge("testPrint");
     showToast("Data uji dikirim. Periksa hasil pada kertas.");

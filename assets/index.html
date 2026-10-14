@@ -60,7 +60,14 @@
               <div class="editor-meta"><span id="listDateText"></span><span id="taskCount"></span></div>
             </div>
             <div id="taskGroups"></div>
-            <button id="addSection" class="button add-section" type="button">+ Tambah section</button>
+            <details id="addSection" class="section-add-menu">
+              <summary>+ Tambah section</summary>
+              <div class="section-choices" aria-label="Blok pertama dalam section baru">
+                <button type="button" data-section-type="heading">Judul bagian</button>
+                <button type="button" data-section-type="checklist">☐ Checklist</button>
+                <button type="button" data-section-type="note">Catatan</button>
+              </div>
+            </details>
           </div>
         </div>
         <aside class="preview-column">
@@ -87,6 +94,7 @@
           <div class="field"><label for="paperWidth">Lebar kertas</label><select id="paperWidth"><option value="80">80 mm</option><option value="58">58 mm</option></select></div>
           <div class="field"><label for="printableDots">Lebar area cetak (dot)</label><input id="printableDots" type="number" min="256" max="832" step="8"><small>Umumnya 576 dot untuk 80 mm atau 384 dot untuk 58 mm. Ubah bila tepi cetakan terpotong.</small></div>
           <div class="field"><label for="baudRate">Kecepatan port Windows</label><select id="baudRate"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option><option>460800</option></select><small>COM6 berhasil mencetak pada 115200. Angka BT Baud 460800 di self-test printer berbeda dari batas port Windows.</small></div>
+          <div class="field"><label for="footerName">Nama penutup cetakan</label><input id="footerName" maxlength="80" placeholder="Contoh: Nama Anda"><small>Berlaku untuk semua daftar. Kosongkan jika tidak ingin menampilkan penutup.</small></div>
         </div>
         <div class="printer-actions"><button id="savePrinter" class="button button-primary" type="button">Simpan pengaturan</button><button id="testPrint" class="button button-secondary" type="button">Cetak halaman uji</button></div>
         <p class="fine-print">Pesan “data terkirim” berarti komputer berhasil menulis ke port; periksa kertas untuk memastikan printer benar-benar mencetak.</p>

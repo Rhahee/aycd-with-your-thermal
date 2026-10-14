@@ -18,6 +18,7 @@ internal sealed class AppState
     public List<TodoList> Lists { get; set; } = [];
     public PrinterSettings Printer { get; set; } = new();
     public List<PrinterSettings> PrinterProfiles { get; set; } = [];
+    public string FooterName { get; set; } = "";
     public UpdateSettings Update { get; set; } = new();
 }
 

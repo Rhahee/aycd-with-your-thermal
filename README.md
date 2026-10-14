@@ -10,7 +10,7 @@ Aplikasi daftar tugas untuk Windows. Antarmuka HTML/CSS/JavaScript berjalan di W
 
 ## Menyusun daftar dengan blok
 
-Pada halaman **Daily**, buat daftar lalu isi judul pada card tersendiri. Gunakan **+ Tambah section** untuk membuat card bagian baru, misalnya Senin, Selasa, dan seterusnya untuk rencana mingguan. Setiap section memiliki judul dan dapat berisi blok **Checklist**, **Judul bagian**, serta **Catatan** melalui **+ Tambah blok**. Tombol panah mengubah urutan section atau blok di dalam section. Daftar lama, termasuk daftar Weekly, tetap dapat dibuka dari **History**. Pratinjau mengikuti urutan section dan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi.
+Pada halaman **Daily**, buat daftar lalu isi judul pada card tersendiri. Klik **+ Tambah section** dan pilih blok pertama: **Judul bagian**, **Checklist**, atau **Catatan**. Section baru tidak memiliki judul otomatis; tambahkan blok lain lewat **+ Tambah blok**. Tombol panah mengubah urutan section atau blok di dalam section. Garis lurus memisahkan judul daftar dari section pertama, sedangkan garis putus-putus memisahkan antarsection, termasuk pada cetakan. Daftar lama, termasuk daftar Weekly, tetap dapat dibuka dari **History**. Pratinjau mengikuti urutan section dan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi. Nama penutup opsional untuk semua cetakan dapat diisi di **Settings > Printer**.
 
 Data disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Menghapus aplikasi tidak menghapus file tersebut. Salin file ini untuk mencadangkan daftar secara manual.
 

@@ -83,6 +83,13 @@ try
             "Urutan section tidak mengubah pratinjau cetak.");
         daily.Sections.Reverse();
     }
+    store.SavePrintSettings(new PrinterSettings(), "  Rahee  ");
+    Assert(new AppStore(directory).State.FooterName == "Rahee",
+        "Nama penutup global tidak tersimpan.");
+    using (var withoutFooter = ReceiptRenderer.Render(daily, new PrinterSettings()))
+    using (var withFooter = ReceiptRenderer.Render(daily, new PrinterSettings(), "Rahee"))
+        Assert(withFooter.Height > withoutFooter.Height,
+            "Nama penutup opsional tidak muncul pada cetakan.");
 
     var weekly = new TodoList
     {

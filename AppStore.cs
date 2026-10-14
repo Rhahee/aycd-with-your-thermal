@@ -23,6 +23,7 @@ internal sealed class AppStore
         State.Lists ??= [];
         State.Printer ??= new PrinterSettings();
         State.PrinterProfiles ??= [];
+        State.FooterName ??= "";
         State.Update ??= new UpdateSettings();
         State.Update.ApplyDefaults();
         if (!State.PrinterProfiles.Any(profile => profile.Id == State.Printer.Id))
@@ -57,11 +58,20 @@ internal sealed class AppStore
 
     public void SavePrinter(PrinterSettings settings)
     {
+        SavePrintSettings(settings, State.FooterName);
+    }
+
+    public void SavePrintSettings(PrinterSettings settings, string footerName)
+    {
         ValidatePrinter(settings);
+        footerName = footerName?.Trim() ?? "";
+        if (footerName.Length > 80 || footerName.Contains('\n') || footerName.Contains('\r'))
+            throw new ArgumentException("Nama penutup maksimal 80 karakter dalam satu baris.");
         var index = State.PrinterProfiles.FindIndex(profile => profile.Id == settings.Id);
         if (index >= 0) State.PrinterProfiles[index] = settings;
         else State.PrinterProfiles.Add(settings);
         State.Printer = settings;
+        State.FooterName = footerName;
         Persist();
     }
 
@@ -101,7 +111,7 @@ internal sealed class AppStore
             throw new ArgumentException("Tanggal tidak valid.");
         if (list.Kind == "weekly" && date.DayOfWeek != DayOfWeek.Monday)
             throw new ArgumentException("Tanggal daftar mingguan harus hari Senin.");
-        if (list.Title is null || list.Title.Length > 100 || list.Tasks is null || list.Tasks.Count > 200 ||
+        if (list.Title is null || list.Title.Length > 100 || list.Tasks is null || list.Tasks.Count > 250 ||
             list.Sections is null || list.Sections.Count > 50)
             throw new ArgumentException("Daftar terlalu panjang.");
         var sectionIds = new HashSet<string>();

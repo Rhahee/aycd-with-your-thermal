@@ -92,7 +92,9 @@ internal sealed class MainForm : Form
                     var printer = JsonSerializer.Deserialize<PrinterSettings>(
                         payload.GetProperty("printer").GetRawText(), JsonConfig.Options)
                         ?? throw new ArgumentException("Profil printer kosong.");
-                    _store.SavePrinter(printer);
+                    _store.SavePrintSettings(printer,
+                        payload.TryGetProperty("footerName", out var footerName)
+                            ? footerName.GetString() ?? "" : _store.State.FooterName);
                     data = _store.State;
                     break;
                 case "activatePrinter":
@@ -151,7 +153,8 @@ internal sealed class MainForm : Form
                     var previewList = JsonSerializer.Deserialize<TodoList>(
                         payload.GetProperty("list").GetRawText(), JsonConfig.Options)
                         ?? throw new ArgumentException("Data daftar kosong.");
-                    using (var bitmap = ReceiptRenderer.Render(previewList, _store.State.Printer))
+                    using (var bitmap = ReceiptRenderer.Render(previewList, _store.State.Printer,
+                               _store.State.FooterName))
                         data = ReceiptRenderer.ToDataUrl(bitmap);
                     break;
                 case "testPrint":
@@ -159,7 +162,8 @@ internal sealed class MainForm : Form
                         throw new InvalidOperationException("Printer sedang mencetak.");
                     try
                     {
-                        using var bitmap = ReceiptRenderer.RenderTest(_store.State.Printer);
+                        using var bitmap = ReceiptRenderer.RenderTest(_store.State.Printer,
+                            _store.State.FooterName);
                         await Task.Run(() => EscPosPrinter.Print(bitmap, _store.State.Printer));
                     }
                     finally { _printGate.Release(); }
@@ -173,7 +177,8 @@ internal sealed class MainForm : Form
                         throw new InvalidOperationException("Printer sedang mencetak.");
                     try
                     {
-                        using var bitmap = ReceiptRenderer.Render(savedList, _store.State.Printer);
+                        using var bitmap = ReceiptRenderer.Render(savedList, _store.State.Printer,
+                            _store.State.FooterName);
                         await Task.Run(() => EscPosPrinter.Print(bitmap, _store.State.Printer));
                     }
                     finally { _printGate.Release(); }

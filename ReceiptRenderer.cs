@@ -11,13 +11,16 @@ internal static class ReceiptRenderer
     private static readonly string[] DayNames =
         ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
-    private enum RowKind { Header, Meta, Section, Heading, Note, Task, Rule, Footer }
+    private enum RowKind { Header, Meta, Section, Heading, Note, Task, Rule, DashedRule, Footer }
     private sealed record Row(RowKind Kind, string Text, float Top, float Height);
 
-    public static Bitmap Render(TodoList list, PrinterSettings settings)
+    public static Bitmap Render(TodoList list, PrinterSettings settings, string footerName = "")
     {
         AppStore.ValidateList(list);
         AppStore.ValidatePrinter(settings);
+        footerName = footerName?.Trim() ?? "";
+        if (footerName.Length > 80)
+            throw new ArgumentException("Nama penutup maksimal 80 karakter.");
 
         var width = settings.PrintableDots;
         var margin = width <= 400 ? 14 : 18;
@@ -58,6 +61,7 @@ internal static class ReceiptRenderer
         y += 17;
 
         var addedBlocks = 0;
+        var printedSections = 0;
         if (list.Sections.Count > 0)
         {
             foreach (var section in list.Sections)
@@ -65,6 +69,7 @@ internal static class ReceiptRenderer
                 var blocks = list.Tasks.Where(task => task.SectionId == section.Id &&
                     !string.IsNullOrWhiteSpace(task.Text)).ToList();
                 if (blocks.Count == 0) continue;
+                if (printedSections++ > 0) AddDashedSeparator();
                 if (!string.IsNullOrWhiteSpace(section.Title))
                     Add(RowKind.Section, section.Title.Trim(), sectionFont, width - margin * 2, 7);
                 foreach (var block in blocks) AddBlock(block);
@@ -90,12 +95,19 @@ internal static class ReceiptRenderer
         {
             var tasks = list.Tasks.Where(task => task.Day == day && !string.IsNullOrWhiteSpace(task.Text)).ToList();
             if (tasks.Count == 0) return;
+            if (printedSections++ > 0) AddDashedSeparator();
             Add(RowKind.Section, label, sectionFont, width - margin * 2, 5);
             foreach (var task in tasks)
             {
                 AddBlock(task);
             }
             y += 5;
+        }
+
+        void AddDashedSeparator()
+        {
+            rows.Add(new Row(RowKind.DashedRule, "", y, 2));
+            y += 18;
         }
 
         void AddBlock(TodoTask task)
@@ -114,10 +126,11 @@ internal static class ReceiptRenderer
 
         if (addedBlocks == 0)
             Add(RowKind.Meta, "Belum ada tugas.", bodyFont, width - margin * 2, 10);
-        y += 4;
-        rows.Add(new Row(RowKind.Rule, "", y, 2));
-        y += 13;
-        Add(RowKind.Footer, "AYCD Printer", smallFont, width - margin * 2, 0);
+        if (footerName.Length > 0)
+        {
+            y += 8;
+            Add(RowKind.Footer, footerName, smallFont, width - margin * 2, 0);
+        }
         var heightPixels = (int)Math.Ceiling(y + 24);
         if (heightPixels > 30000)
             throw new InvalidOperationException("Daftar terlalu panjang untuk satu cetakan.");
@@ -157,6 +170,10 @@ internal static class ReceiptRenderer
                     using (var pen = new Pen(Color.Black, 2))
                         graphics.DrawLine(pen, margin, row.Top, width - margin, row.Top);
                     break;
+                case RowKind.DashedRule:
+                    using (var pen = new Pen(Color.Black, 2) { DashStyle = DashStyle.Dash })
+                        graphics.DrawLine(pen, margin, row.Top, width - margin, row.Top);
+                    break;
                 case RowKind.Footer:
                     graphics.DrawString(row.Text, smallFont, Brushes.Black, rect, format);
                     break;
@@ -165,7 +182,7 @@ internal static class ReceiptRenderer
         return bitmap;
     }
 
-    public static Bitmap RenderTest(PrinterSettings settings)
+    public static Bitmap RenderTest(PrinterSettings settings, string footerName = "")
     {
         var sample = new TodoList
         {
@@ -178,7 +195,7 @@ internal static class ReceiptRenderer
                 new TodoTask { Text = "Jika tepi kiri atau kanan terpotong, ubah lebar area cetak pada pengaturan printer." }
             ]
         };
-        return Render(sample, settings);
+        return Render(sample, settings, footerName);
     }
 
     public static string ToDataUrl(Bitmap bitmap)
