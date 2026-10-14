@@ -2,12 +2,19 @@
 
 **All You Can Do with Your Thermal Printer** adalah aplikasi daftar tugas untuk Windows. Antarmukanya berjalan di WebView2, sedangkan WinForms menyimpan data lokal dan mengirim cetakan ke printer thermal Bluetooth serial yang mendukung ESC/POS. Aplikasi tidak memerlukan akun atau internet untuk membuat daftar dan mencetak.
 
-## Mulai menggunakan
+## Instalasi langkah demi langkah
 
-1. Jalankan installer Windows yang dibuat dari repo ini. Installer memasang aplikasi untuk pengguna saat ini dan menyiapkan WebView2 Runtime jika belum tersedia.
-2. Pasangkan printer di pengaturan Bluetooth Windows. Buka **Settings** di aplikasi, pilih port COM keluar, lalu klik **Cetak halaman uji**. Pastikan hasilnya benar-benar keluar di kertas.
-3. Pilih lebar kertas **58 mm** atau **80 mm**. Jika tepi cetakan terpotong, buka **Pengaturan lanjutan**, sesuaikan **Lebar area cetak (dot)**, lalu ulangi halaman uji.
-4. Buka **To do list**, pilih tanggal, dan buat daftar. Isi judul, tambahkan section dan blok, lalu cetak dari pratinjau.
+1. Siapkan file installer `All-You-Can-Do-with-Your-Thermal-Printer-Setup-<versi>-win-x64.exe`. Minta file tersebut dari pembuat aplikasi, atau [buat sendiri dari source](#membuat-installer). File installer berada di `installer\output\` setelah proses build dan tidak disimpan di Git.
+2. Klik dua kali file installer di laptop Windows x64, lalu ikuti petunjuk yang muncul. Pemasangan dilakukan untuk akun Windows yang sedang dipakai, sehingga tidak memerlukan hak administrator.
+3. Pilih apakah ingin membuat pintasan desktop, lalu klik **Install**. Installer membuat pintasan di Start Menu dan memasang WebView2 Runtime jika belum tersedia. Sediakan koneksi internet jika WebView2 perlu dipasang.
+4. Setelah selesai, klik **Finish** dan buka **All You Can Do with Your Thermal Printer** dari Start Menu. Jika pintasan desktop dipilih, aplikasi juga bisa dibuka dari sana.
+5. Lanjutkan ke [penggunaan pertama](#penggunaan-pertama) untuk memasangkan printer dan mencetak halaman uji.
+
+## Penggunaan pertama
+
+1. Pasangkan printer di pengaturan Bluetooth Windows. Buka **Settings** di aplikasi, pilih port COM keluar, lalu klik **Cetak halaman uji**. Pastikan hasilnya benar-benar keluar di kertas.
+2. Pilih lebar kertas **58 mm** atau **80 mm**. Jika tepi cetakan terpotong, buka **Pengaturan lanjutan**, sesuaikan **Lebar area cetak (dot)**, lalu ulangi halaman uji.
+3. Buka **To do list**, pilih tanggal, dan buat daftar. Isi judul, tambahkan section dan blok, lalu cetak dari pratinjau.
 
 Printer RPP02N 80 mm pernah berhasil diuji pada laptop pengembangan melalui COM6 dengan kecepatan port Windows 115200. Port dan kecepatan pada perangkat lain bisa berbeda. Nilai *BT Baud* pada halaman self-test printer tidak selalu sama dengan kecepatan port COM Windows.
 
