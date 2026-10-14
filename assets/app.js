@@ -163,7 +163,7 @@ function renderSettings() {
   $("repositoryBranch").value = state.update?.branch || "";
   $("updateStatus").textContent = state.update?.repositoryUrl
     ? "Repo siap diperiksa. Tekan tombol update saat Anda ingin mengambil versi baru."
-    : "Repo belum disiapkan. Isi URL setelah repo dibuat.";
+    : "Repo belum disiapkan.";
   bridge("updateStatus").then((result) => {
     $("installedCommit").textContent = result.installedCommit
       ? `Versi terpasang: ${result.installedCommit.slice(0, 12)}`
@@ -178,6 +178,8 @@ function updateSettingsFromForm() {
 async function saveUpdateSettings() {
   try {
     state.update = await bridge("saveUpdateSettings", { settings: updateSettingsFromForm() });
+    $("repositoryUrl").value = state.update.repositoryUrl;
+    $("repositoryBranch").value = state.update.branch;
     $("updateStatus").textContent = state.update.repositoryUrl
       ? "Alamat repo tersimpan." : "Repo belum disiapkan.";
     showToast("Pengaturan repo disimpan.");
@@ -191,6 +193,8 @@ async function runUpdate() {
   try {
     await saveChain;
     state.update = await bridge("saveUpdateSettings", { settings: updateSettingsFromForm() });
+    $("repositoryUrl").value = state.update.repositoryUrl;
+    $("repositoryBranch").value = state.update.branch;
     const result = await bridge("checkUpdate");
     if (result.status === "current") {
       $("updateStatus").textContent = `Sudah versi terbaru (${result.commit.slice(0, 12)}).`;

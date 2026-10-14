@@ -23,8 +23,22 @@ internal sealed class AppState
 
 internal sealed class UpdateSettings
 {
-    public string RepositoryUrl { get; set; } = "";
-    public string Branch { get; set; } = "";
+    public const string DefaultRepositoryUrl = "https://github.com/Rhahee/aycd-with-your-thermal.git";
+    public const string DefaultBranch = "main";
+
+    public string RepositoryUrl { get; set; } = DefaultRepositoryUrl;
+    public string Branch { get; set; } = DefaultBranch;
+
+    public void ApplyDefaults()
+    {
+        RepositoryUrl = RepositoryUrl?.Trim() ?? "";
+        Branch = Branch?.Trim() ?? "";
+        if (RepositoryUrl.Length == 0)
+        {
+            RepositoryUrl = DefaultRepositoryUrl;
+            Branch = DefaultBranch;
+        }
+    }
 }
 
 internal sealed class TodoList

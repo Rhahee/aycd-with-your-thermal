@@ -24,6 +24,7 @@ internal sealed class AppStore
         State.Printer ??= new PrinterSettings();
         State.PrinterProfiles ??= [];
         State.Update ??= new UpdateSettings();
+        State.Update.ApplyDefaults();
         if (!State.PrinterProfiles.Any(profile => profile.Id == State.Printer.Id))
             State.PrinterProfiles.Add(State.Printer);
     }
@@ -83,9 +84,8 @@ internal sealed class AppStore
 
     public void SaveUpdateSettings(UpdateSettings settings)
     {
+        settings.ApplyDefaults();
         UpdateService.ValidateSettings(settings);
-        settings.RepositoryUrl = settings.RepositoryUrl?.Trim() ?? "";
-        settings.Branch = settings.Branch?.Trim() ?? "";
         State.Update = settings;
         Persist();
     }

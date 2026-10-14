@@ -82,13 +82,13 @@
 
       <section id="settingsView" class="content-card hidden">
         <div class="section-heading"><div><div class="eyebrow">PEMBARUAN APLIKASI</div><h2>Settings</h2></div><span class="badge">Git</span></div>
-        <p class="muted settings-intro">Simpan alamat repo sumber Print-To-Do. Saat tombol update ditekan, aplikasi mengambil perubahan, membangun rilis baru, lalu membuka ulang aplikasi. Daftar dan profil printer tetap tersimpan di laptop.</p>
+        <p class="muted settings-intro">Repo resmi sudah dipilih sebagai sumber update. Saat tombol update ditekan, aplikasi mengambil perubahan, membangun rilis baru, lalu membuka ulang aplikasi. Daftar dan profil printer tetap tersimpan di laptop.</p>
         <div class="form-grid settings-grid">
-          <div class="field settings-url"><label for="repositoryUrl">URL repo</label><input id="repositoryUrl" type="url" spellcheck="false" placeholder="https://github.com/nama/print-to-do.git"><small>Isi setelah repo dibuat. URL HTTPS, SSH, atau file:// didukung.</small></div>
-          <div class="field"><label for="repositoryBranch">Branch (opsional)</label><input id="repositoryBranch" spellcheck="false" placeholder="Otomatis dari repo"><small>Kosongkan untuk memakai branch utama repo.</small></div>
+          <div class="field settings-url"><label for="repositoryUrl">URL repo</label><input id="repositoryUrl" type="url" spellcheck="false" placeholder="https://github.com/Rhahee/aycd-with-your-thermal.git"><small>Sumber bawaan: Rhahee/aycd-with-your-thermal. Anda dapat menggantinya bila diperlukan.</small></div>
+          <div class="field"><label for="repositoryBranch">Branch</label><input id="repositoryBranch" spellcheck="false" placeholder="main"><small>Branch bawaan: main. Kosongkan untuk memakai branch utama repo.</small></div>
         </div>
         <div class="printer-actions"><button id="saveUpdateSettings" class="button button-secondary" type="button">Simpan repo</button><button id="runUpdate" class="button button-primary" type="button">Periksa &amp; pasang update</button></div>
-        <p id="updateStatus" class="update-status" role="status" aria-live="polite">Repo belum disiapkan.</p>
+        <p id="updateStatus" class="update-status" role="status" aria-live="polite">Repo siap diperiksa.</p>
         <p id="installedCommit" class="fine-print"></p>
         <p class="fine-print">Gunakan repo yang Anda percayai: kode dari repo akan dibangun dan dijalankan di laptop ini.</p>
       </section>

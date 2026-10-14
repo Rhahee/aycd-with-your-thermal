@@ -9,6 +9,27 @@ Directory.CreateDirectory(directory);
 try
 {
     var store = new AppStore(directory);
+    Assert(store.State.Update.RepositoryUrl == UpdateSettings.DefaultRepositoryUrl &&
+           store.State.Update.Branch == UpdateSettings.DefaultBranch,
+        "Repo update bawaan tidak terpasang.");
+    var legacyDirectory = Path.Combine(directory, "legacy-settings");
+    Directory.CreateDirectory(legacyDirectory);
+    File.WriteAllText(Path.Combine(legacyDirectory, "state.json"),
+        """{"schemaVersion":1,"update":{"repositoryUrl":"","branch":""}}""");
+    var legacyStore = new AppStore(legacyDirectory);
+    Assert(legacyStore.State.Update.RepositoryUrl == UpdateSettings.DefaultRepositoryUrl &&
+           legacyStore.State.Update.Branch == UpdateSettings.DefaultBranch,
+        "Pengaturan repo kosong dari versi lama tidak memakai sumber bawaan.");
+    legacyStore.SaveUpdateSettings(new UpdateSettings
+    {
+        RepositoryUrl = "https://example.com/custom.git",
+        Branch = ""
+    });
+    Assert(new AppStore(legacyDirectory).State.Update.RepositoryUrl ==
+           "https://example.com/custom.git" &&
+           new AppStore(legacyDirectory).State.Update.Branch == "",
+        "Repo pilihan pengguna berubah setelah aplikasi dibuka ulang.");
+
     var daily = new TodoList
     {
         Kind = "daily",
