@@ -117,7 +117,11 @@ internal sealed class MainForm : Form
                     data = _store.State.Update;
                     break;
                 case "updateStatus":
-                    data = new { installedCommit = UpdateService.GetInstalledCommit(AppContext.BaseDirectory) };
+                    data = new
+                    {
+                        installedCommit = UpdateService.GetInstalledCommit(AppContext.BaseDirectory),
+                        appVersion = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.3"
+                    };
                     break;
                 case "checkUpdate":
                     if (!await _updateGate.WaitAsync(0))

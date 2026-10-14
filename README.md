@@ -5,18 +5,20 @@ Aplikasi daftar tugas untuk Windows. Antarmuka HTML/CSS/JavaScript berjalan di W
 ## Menjalankan
 
 1. Bangun rilis dari sumber dengan perintah pada bagian **Build rilis lokal**, lalu jalankan `dist\PrintToDo.exe` dengan folder `dist\assets` tetap di tempatnya. WebView2 Runtime diperlukan; build ini sudah membawa .NET Desktop Runtime.
-2. Pasangkan printer melalui pengaturan Bluetooth Windows. Di halaman **Printer**, pilih port COM keluar milik printer dan cetak halaman uji. Pada pengujian aplikasi ini, printer ESC/POS 80 mm berhasil mencetak melalui COM6 dengan kecepatan port Windows 115200. Port dan kecepatan pada laptop lain dapat berbeda.
+2. Pasangkan printer melalui pengaturan Bluetooth Windows. Di halaman **Settings**, pilih port COM keluar milik printer dan cetak halaman uji. Pada pengujian aplikasi ini, printer ESC/POS 80 mm berhasil mencetak melalui COM6 dengan kecepatan port Windows 115200. Port dan kecepatan pada laptop lain dapat berbeda.
 3. Pilih profil 80 mm atau 58 mm. Jika hasil cetak terpotong, sesuaikan **Lebar area cetak (dot)** lalu ulangi halaman uji.
 
 ## Menyusun daftar dengan blok
 
-Pada halaman **Daily**, buat daftar lalu isi judul pada card tersendiri. Klik **+ Tambah section** dan pilih blok pertama: **Judul bagian**, **Checklist**, atau **Catatan**. Section baru tidak memiliki judul otomatis; tambahkan blok lain lewat **+ Tambah blok**. Tombol panah mengubah urutan section atau blok di dalam section. Garis lurus memisahkan judul daftar dari section pertama, sedangkan garis putus-putus memisahkan antarsection, termasuk pada cetakan. Daftar lama, termasuk daftar Weekly, tetap dapat dibuka dari **History**. Pratinjau mengikuti urutan section dan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi. Nama penutup opsional untuk semua cetakan dapat diisi di **Settings > Printer**.
+Pada halaman **To do list**, buat daftar lalu isi judul pada card tersendiri. Klik **+ Tambah section** dan pilih blok pertama: **Judul bagian**, **Checklist**, atau **Catatan**. Section baru tidak memiliki judul otomatis; tambahkan blok lain lewat **+ Tambah blok**. Tombol panah mengubah urutan section atau blok di dalam section. Garis lurus memisahkan judul daftar dari section pertama, sedangkan garis putus-putus memisahkan antarsection, termasuk pada cetakan. Daftar lama, termasuk daftar Weekly, tetap dapat dibuka dari **History**. Pratinjau mengikuti urutan section dan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi. Nama penutup opsional untuk semua cetakan dapat diisi di **Settings**.
 
 Data disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Menghapus aplikasi tidak menghapus file tersebut. Salin file ini untuk mencadangkan daftar secara manual.
 
 ## Update dari repo Git
 
-Buka **Settings > Update** lalu klik **Cek Update** untuk memeriksa repo `https://github.com/Rhahee/aycd-with-your-thermal.git` pada branch `main`. Aplikasi melakukan clone pada penggunaan pertama, kemudian `git pull --ff-only` untuk pemeriksaan berikutnya. Jika ada commit baru, tombol **Update** aktif. Klik tombol tersebut untuk membangun rilis, mengganti `PrintToDo.exe` dan folder `assets` di lokasi aplikasi terpasang, lalu membuka ulang aplikasi. Versi `.exe` sebelumnya disimpan sebagai `PrintToDo.exe.previous`. Data daftar dan profil printer tetap berada di `%LOCALAPPDATA%\PrintToDo\state.json`.
+Buka **Settings** lalu klik **Cek Update** di bagian bawah pengaturan printer untuk memeriksa repo `https://github.com/Rhahee/aycd-with-your-thermal.git` pada branch `main`. Aplikasi melakukan clone pada penggunaan pertama, kemudian `git pull --ff-only` untuk pemeriksaan berikutnya. Jika ada commit baru, tombol **Update** aktif. Klik tombol tersebut untuk membangun rilis, mengganti `PrintToDo.exe` dan folder `assets` di lokasi aplikasi terpasang, lalu membuka ulang aplikasi. Versi `.exe` sebelumnya disimpan sebagai `PrintToDo.exe.previous`. Data daftar dan profil printer tetap berada di `%LOCALAPPDATA%\PrintToDo\state.json`.
+
+Versi aplikasi dan commit yang terpasang terlihat di kiri bawah sidebar. Nama penutup yang diisi akan dicetak setelah garis penutup.
 
 Proses update memerlukan Git, SDK .NET 10, akses ke repo, dan hak tulis pada folder `dist`. Gunakan repo yang Anda percayai karena kode dari repo akan dibangun dan dijalankan di laptop.
 

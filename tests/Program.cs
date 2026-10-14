@@ -88,8 +88,9 @@ try
         "Nama penutup global tidak tersimpan.");
     using (var withoutFooter = ReceiptRenderer.Render(daily, new PrinterSettings()))
     using (var withFooter = ReceiptRenderer.Render(daily, new PrinterSettings(), "Rahee"))
-        Assert(withFooter.Height > withoutFooter.Height,
-            "Nama penutup opsional tidak muncul pada cetakan.");
+        Assert(withFooter.Height > withoutFooter.Height && HasClosingRule(withFooter) &&
+               !HasClosingRule(withoutFooter),
+            "Nama atau garis penutup tidak muncul pada cetakan.");
 
     var weekly = new TodoList
     {
@@ -251,6 +252,23 @@ static byte[] Hash(Bitmap bitmap)
     using var stream = new MemoryStream();
     bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
     return SHA256.HashData(stream.ToArray());
+}
+
+static bool HasClosingRule(Bitmap bitmap)
+{
+    var left = 24;
+    var right = bitmap.Width - 24;
+    for (var y = Math.Max(0, bitmap.Height - 110); y < bitmap.Height - 24; y++)
+    {
+        var dark = 0;
+        for (var x = left; x < right; x++)
+        {
+            var pixel = bitmap.GetPixel(x, y);
+            if (pixel.R < 100 && pixel.G < 100 && pixel.B < 100) dark++;
+        }
+        if (dark > (right - left) * .9) return true;
+    }
+    return false;
 }
 
 static void RunGit(string workingDirectory, params string[] arguments)

@@ -13,23 +13,13 @@
       <div class="brand"><span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/><path d="M18 12h.01"/></svg></span><span>AYCD Printer</span></div>
       <p class="sidebar-caption">Your thermal printer can do more than receipts.</p>
       <nav aria-label="Navigasi utama">
-        <div class="nav-group" data-group="todo">
-          <button class="nav-parent" type="button" aria-expanded="true" aria-controls="todoNav"><span class="nav-icon">☑</span><span>To Do List</span><span class="nav-chevron" aria-hidden="true">⌄</span></button>
-          <div id="todoNav" class="nav-children">
-            <button class="nav-button active" type="button" data-view="daily"><span class="nav-icon">◫</span> Daily</button>
-            <button class="nav-button" type="button" data-view="history"><span class="nav-icon">◷</span> History</button>
-          </div>
-        </div>
-        <div class="nav-group" data-group="settings">
-          <button class="nav-parent" type="button" aria-expanded="false" aria-controls="settingsNav"><span class="nav-icon">⚙</span><span>Settings</span><span class="nav-chevron" aria-hidden="true">⌄</span></button>
-          <div id="settingsNav" class="nav-children" hidden>
-            <button class="nav-button" type="button" data-view="printer"><span class="nav-icon">▤</span> Printer</button>
-            <button class="nav-button" type="button" data-view="settings"><span class="nav-icon">↻</span> Update</button>
-          </div>
-        </div>
+        <button class="nav-button active" type="button" data-view="daily"><span class="nav-icon">☑</span> To do list</button>
+        <button class="nav-button" type="button" data-view="history"><span class="nav-icon">◷</span> History</button>
+        <button class="nav-button" type="button" data-view="printer"><span class="nav-icon">⚙</span> Settings</button>
       </nav>
       <div class="sidebar-bottom">
-        <span class="status-dot"></span> Tersimpan di laptop ini
+        <div id="appVersion" class="sidebar-version">Versi aplikasi…</div>
+        <div><span class="status-dot"></span> Tersimpan di laptop ini</div>
       </div>
     </aside>
 
@@ -85,23 +75,24 @@
       </section>
 
       <section id="printerView" class="content-card printer-card hidden">
-        <div class="section-heading"><div><div class="eyebrow">BLUETOOTH SERIAL</div><h2>Pengaturan printer</h2></div><span class="badge">ESC/POS</span></div>
-        <p class="muted">Pasangkan printer melalui pengaturan Bluetooth Windows, lalu pilih port COM keluar milik printer. Jika ada beberapa perangkat, cocokkan alamat Bluetooth di pengaturan Windows dengan halaman self-test printer.</p>
-        <div class="profile-switcher"><div class="field"><label for="profileSelect">Profil tersimpan</label><select id="profileSelect"></select></div><button id="newProfile" class="button button-secondary" type="button">+ Profil baru</button><button id="deleteProfile" class="button button-ghost button-danger" type="button">Hapus profil</button></div>
-        <div class="form-grid">
-          <div class="field"><label for="printerName">Nama printer</label><input id="printerName" maxlength="80" placeholder="Contoh: RPP02N"></div>
+        <div class="section-heading"><div><h2>Printer</h2></div></div>
+        <p class="muted">Pilih printer Bluetooth yang sudah dipasangkan di Windows.</p>
+        <div class="form-grid settings-grid">
+          <div class="field"><label for="profileSelect">Profil printer</label><select id="profileSelect"></select></div>
           <div class="field"><label for="portName">Port Bluetooth</label><div class="inline-field"><select id="portName"></select><button id="reloadPorts" class="button button-secondary" type="button">Muat ulang</button></div></div>
           <div class="field"><label for="paperWidth">Lebar kertas</label><select id="paperWidth"><option value="80">80 mm</option><option value="58">58 mm</option></select></div>
-          <div class="field"><label for="printableDots">Lebar area cetak (dot)</label><input id="printableDots" type="number" min="256" max="832" step="8"><small>Umumnya 576 dot untuk 80 mm atau 384 dot untuk 58 mm. Ubah bila tepi cetakan terpotong.</small></div>
-          <div class="field"><label for="baudRate">Kecepatan port Windows</label><select id="baudRate"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option><option>460800</option></select><small>COM6 berhasil mencetak pada 115200. Angka BT Baud 460800 di self-test printer berbeda dari batas port Windows.</small></div>
-          <div class="field"><label for="footerName">Nama penutup cetakan</label><input id="footerName" maxlength="80" placeholder="Contoh: Nama Anda"><small>Berlaku untuk semua daftar. Kosongkan jika tidak ingin menampilkan penutup.</small></div>
+          <div class="field"><label for="footerName">Nama penutup</label><input id="footerName" maxlength="80" placeholder="Opsional"><small>Berlaku untuk semua daftar.</small></div>
         </div>
+        <details class="advanced-settings"><summary>Pengaturan lanjutan</summary>
+          <div class="profile-actions"><button id="newProfile" class="button button-secondary" type="button">+ Profil baru</button><button id="deleteProfile" class="button button-ghost button-danger" type="button">Hapus profil</button></div>
+          <div class="form-grid">
+            <div class="field"><label for="printerName">Nama printer</label><input id="printerName" maxlength="80" placeholder="Contoh: RPP02N"></div>
+            <div class="field"><label for="printableDots">Lebar area cetak (dot)</label><input id="printableDots" type="number" min="256" max="832" step="8"><small>Ubah jika tepi cetakan terpotong.</small></div>
+            <div class="field"><label for="baudRate">Kecepatan port</label><select id="baudRate"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option><option>460800</option></select></div>
+          </div>
+        </details>
         <div class="printer-actions"><button id="savePrinter" class="button button-primary" type="button">Simpan pengaturan</button><button id="testPrint" class="button button-secondary" type="button">Cetak halaman uji</button></div>
-        <p class="fine-print">Pesan “data terkirim” berarti komputer berhasil menulis ke port; periksa kertas untuk memastikan printer benar-benar mencetak.</p>
-      </section>
-
-      <section id="settingsView" class="content-card hidden">
-        <div class="update-actions"><button id="checkUpdate" class="button button-secondary" type="button">Cek Update</button><button id="runUpdate" class="button button-primary" type="button" disabled>Update</button></div>
+        <div class="settings-update"><h3>Pembaruan aplikasi</h3><div class="update-actions"><button id="checkUpdate" class="button button-secondary" type="button">Cek Update</button><button id="runUpdate" class="button button-primary" type="button" disabled>Update</button></div></div>
       </section>
     </main>
   </div>

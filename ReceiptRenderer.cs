@@ -128,7 +128,9 @@ internal static class ReceiptRenderer
             Add(RowKind.Meta, "Belum ada tugas.", bodyFont, width - margin * 2, 10);
         if (footerName.Length > 0)
         {
-            y += 8;
+            y += 5;
+            rows.Add(new Row(RowKind.Rule, "", y, 2));
+            y += 13;
             Add(RowKind.Footer, footerName, smallFont, width - margin * 2, 0);
         }
         var heightPixels = (int)Math.Ceiling(y + 24);

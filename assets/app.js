@@ -64,22 +64,23 @@ async function start() {
   bindEvents();
   selectForDate();
   render();
+  loadVersion();
+}
+
+async function loadVersion() {
+  try {
+    const info = await bridge("updateStatus");
+    const commit = /^[0-9a-f]{7,40}$/i.test(info.installedCommit || "")
+      ? ` · ${info.installedCommit.slice(0, 7)}` : "";
+    $("appVersion").textContent = `Versi ${info.appVersion || "1.0.3"}${commit}`;
+  } catch {
+    $("appVersion").textContent = "Versi tidak tersedia";
+  }
 }
 
 function bindEvents() {
-  document.querySelectorAll(".nav-parent").forEach((button) => button.addEventListener("click", () => {
-    const group = button.closest(".nav-group");
-    setNavGroup(group, button.getAttribute("aria-expanded") !== "true");
-    if (button.getAttribute("aria-expanded") === "true") {
-      document.querySelectorAll(".nav-group").forEach((other) => {
-        if (other !== group) setNavGroup(other, false);
-      });
-    }
-  }));
   document.querySelectorAll(".nav-button").forEach((button) => button.addEventListener("click", () => {
     view = button.dataset.view;
-    document.querySelectorAll(".nav-group").forEach((group) =>
-      setNavGroup(group, group.contains(button)));
     if (view === "daily") $("planDate").value = isoDate(new Date());
     if (view === "daily") selectForDate();
     render();
@@ -112,11 +113,6 @@ function bindEvents() {
   $("deleteProfile").addEventListener("click", deleteProfile);
   $("checkUpdate").addEventListener("click", checkUpdate);
   $("runUpdate").addEventListener("click", runUpdate);
-}
-
-function setNavGroup(group, expanded) {
-  group.querySelector(".nav-parent").setAttribute("aria-expanded", String(expanded));
-  group.querySelector(".nav-children").hidden = !expanded;
 }
 
 function selectForDate() {
@@ -157,21 +153,16 @@ function persistList() {
 function render() {
   document.querySelectorAll(".nav-button").forEach((button) =>
     button.classList.toggle("active", button.dataset.view === view));
-  document.querySelectorAll(".nav-group").forEach((group) =>
-    group.querySelector(".nav-parent").classList.toggle("current",
-      !!group.querySelector(`.nav-button[data-view="${view}"]`)));
   const planner = view === "daily";
   $("plannerView").classList.toggle("hidden", !planner);
   $("historyView").classList.toggle("hidden", view !== "history");
   $("printerView").classList.toggle("hidden", view !== "printer");
-  $("settingsView").classList.toggle("hidden", view !== "settings");
   $("newListButton").classList.toggle("hidden", !planner);
-  $("pageTitle").textContent = ({ daily: currentList()?.kind === "weekly" ? "Weekly · History" : "Daily",
-    history: "History", printer: "Printer", settings: "Update" })[view];
+  $("pageTitle").textContent = ({ daily: currentList()?.kind === "weekly" ? "Weekly · History" : "To do list",
+    history: "History", printer: "Settings" })[view];
   if (planner) renderPlanner();
   if (view === "history") renderHistory();
-  if (view === "printer") renderPrinter();
-  if (view === "settings") renderSettings();
+  if (view === "printer") { renderPrinter(); renderSettings(); }
 }
 
 function renderSettings() {
@@ -534,8 +525,6 @@ function renderHistory() {
     open.textContent = "Buka";
     open.addEventListener("click", () => {
       view = "daily";
-      document.querySelectorAll(".nav-group").forEach((group) =>
-        setNavGroup(group, group.dataset.group === "todo"));
       $("planDate").value = list.date;
       selectedId = list.id;
       render();
