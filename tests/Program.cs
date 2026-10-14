@@ -43,6 +43,27 @@ try
     Assert(new AppStore(directory).State.Lists.Single().Tasks[0].Completed,
         "Perubahan daftar harian tidak tersimpan.");
 
+    var legacyTask = System.Text.Json.JsonSerializer.Deserialize<TodoTask>(
+        """{"id":"d92a2df4111747deaf0469b8bf22c72a","text":"Tugas lama","day":-1,"completed":false}""",
+        JsonConfig.Options)!;
+    Assert(legacyTask.Type == "checklist", "Tugas versi lama tidak menjadi blok checklist.");
+    daily.Tasks.Add(new TodoTask { Type = "heading", Text = "Prioritas" });
+    daily.Tasks.Add(new TodoTask { Type = "note", Text = "Kerjakan sebelum makan siang.\nJangan lupa istirahat." });
+    store.SaveList(daily);
+    Assert(new AppStore(directory).State.Lists.Single().Tasks.Select(task => task.Type)
+        .SequenceEqual(["checklist", "heading", "note"]),
+        "Jenis dan urutan blok tidak tersimpan.");
+    using (var blocksImage = ReceiptRenderer.Render(daily, new PrinterSettings()))
+    {
+        using var checklistOnly = ReceiptRenderer.Render(new TodoList
+        {
+            Kind = daily.Kind, Date = daily.Date, Title = daily.Title,
+            Tasks = [daily.Tasks[0]]
+        }, new PrinterSettings());
+        Assert(blocksImage.Height > checklistOnly.Height,
+            "Judul bagian dan catatan tidak muncul pada cetakan.");
+    }
+
     var weekly = new TodoList
     {
         Kind = "weekly",

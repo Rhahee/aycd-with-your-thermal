@@ -55,6 +55,8 @@ internal sealed class TodoList
 internal sealed class TodoTask
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    // Existing tasks without this field remain checklist blocks.
+    public string Type { get; set; } = "checklist";
     public string Text { get; set; } = "";
     // -1 is a general weekly task. 0 through 6 are Monday through Sunday.
     public int Day { get; set; } = -1;

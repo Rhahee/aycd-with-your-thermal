@@ -11,7 +11,7 @@ internal static class ReceiptRenderer
     private static readonly string[] DayNames =
         ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
-    private enum RowKind { Header, Meta, Section, Task, Rule, Footer }
+    private enum RowKind { Header, Meta, Section, Heading, Note, Task, Rule, Footer }
     private sealed record Row(RowKind Kind, string Text, float Top, float Height);
 
     public static Bitmap Render(TodoList list, PrinterSettings settings)
@@ -57,13 +57,12 @@ internal static class ReceiptRenderer
         rows.Add(new Row(RowKind.Rule, "", y, 2));
         y += 17;
 
-        var addedTasks = 0;
+        var addedBlocks = 0;
         if (list.Kind == "daily")
         {
             foreach (var task in list.Tasks.Where(task => !string.IsNullOrWhiteSpace(task.Text)))
             {
-                Add(RowKind.Task, task.Text.Trim(), bodyFont, width - margin * 2 - 38, 11);
-                addedTasks++;
+                AddBlock(task);
             }
         }
         else
@@ -81,13 +80,26 @@ internal static class ReceiptRenderer
             Add(RowKind.Section, label, sectionFont, width - margin * 2, 5);
             foreach (var task in tasks)
             {
-                Add(RowKind.Task, task.Text.Trim(), bodyFont, width - margin * 2 - 38, 11);
-                addedTasks++;
+                AddBlock(task);
             }
             y += 5;
         }
 
-        if (addedTasks == 0)
+        void AddBlock(TodoTask task)
+        {
+            var kind = task.Type switch
+            {
+                "heading" => RowKind.Heading,
+                "note" => RowKind.Note,
+                _ => RowKind.Task
+            };
+            var font = kind == RowKind.Heading ? sectionFont : bodyFont;
+            var textWidth = width - margin * 2 - (kind == RowKind.Task ? 38 : 0);
+            Add(kind, task.Text.Trim(), font, textWidth, kind == RowKind.Heading ? 7 : 11);
+            addedBlocks++;
+        }
+
+        if (addedBlocks == 0)
             Add(RowKind.Meta, "Belum ada tugas.", bodyFont, width - margin * 2, 10);
         y += 4;
         rows.Add(new Row(RowKind.Rule, "", y, 2));
@@ -117,7 +129,11 @@ internal static class ReceiptRenderer
                         Brushes.Black, rect, format);
                     break;
                 case RowKind.Section:
+                case RowKind.Heading:
                     graphics.DrawString(row.Text, sectionFont, Brushes.Black, rect, format);
+                    break;
+                case RowKind.Note:
+                    graphics.DrawString(row.Text, bodyFont, Brushes.Black, rect, format);
                     break;
                 case RowKind.Task:
                     using (var pen = new Pen(Color.Black, 2))

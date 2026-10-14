@@ -8,6 +8,10 @@ Aplikasi daftar tugas harian dan mingguan untuk Windows. Antarmuka HTML/CSS/Java
 2. Pasangkan printer melalui pengaturan Bluetooth Windows. Di halaman **Printer**, pilih port COM keluar milik printer dan cetak halaman uji. Pada pengujian aplikasi ini, printer ESC/POS 80 mm berhasil mencetak melalui COM6 dengan kecepatan port Windows 115200. Port dan kecepatan pada laptop lain dapat berbeda.
 3. Pilih profil 80 mm atau 58 mm. Jika hasil cetak terpotong, sesuaikan **Lebar area cetak (dot)** lalu ulangi halaman uji.
 
+## Menyusun daftar dengan blok
+
+Pada halaman **Daily** atau **Weekly**, buat daftar lalu gunakan **+ Tambah blok** untuk menambahkan **Checklist**, **Judul bagian**, atau **Catatan**. Gunakan tombol panah pada blok untuk mengubah urutan dalam kelompok hari yang sama. Daftar lama otomatis terbuka sebagai blok checklist. Pratinjau mengikuti urutan blok; kotak checklist pada kertas tetap kosong meski tugas sudah ditandai selesai di aplikasi.
+
 Data disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Menghapus aplikasi tidak menghapus file tersebut. Salin file ini untuk mencadangkan daftar secara manual.
 
 ## Update dari repo Git

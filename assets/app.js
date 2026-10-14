@@ -262,78 +262,135 @@ function addGroup(container, list, day, heading) {
   title.textContent = heading;
   header.append(title);
   group.append(header);
-  list.tasks.filter((task) => task.day === day).forEach((task) => group.append(taskRow(task)));
-  const addButton = document.createElement("button");
-  addButton.type = "button";
-  addButton.className = "add-task";
-  addButton.textContent = "+ Tambah tugas";
-  addButton.addEventListener("click", () => {
-    if (list.tasks.length >= 200) { showToast("Maksimal 200 tugas dalam satu daftar.", true); return; }
-    const task = { id: createId(), text: "", day, completed: false };
-    list.tasks.push(task);
-    const row = taskRow(task);
-    group.insertBefore(row, addButton);
-    row.querySelector(".task-text").focus();
-    updateTaskCount();
-    persistList();
-  });
-  group.append(addButton);
+  const blocks = list.tasks.filter((task) => task.day === day);
+  blocks.forEach((task, index) => group.append(blockRow(task, index, blocks.length)));
+  const addMenu = document.createElement("details");
+  addMenu.className = "block-add";
+  const summary = document.createElement("summary");
+  summary.textContent = "+ Tambah blok";
+  addMenu.append(summary);
+  const choices = document.createElement("div");
+  choices.className = "block-choices";
+  for (const [type, label] of [["checklist", "☐ Checklist"], ["heading", "Judul bagian"], ["note", "Catatan"]]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      addBlock(list, day, type);
+    });
+    choices.append(button);
+  }
+  addMenu.append(choices);
+  group.append(addMenu);
   container.append(group);
 }
 
-function taskRow(task) {
+function addBlock(list, day, type) {
+  if (list.tasks.length >= 200) { showToast("Maksimal 200 blok dalam satu daftar.", true); return; }
+  const task = { id: createId(), type, text: "", day, completed: false };
+  list.tasks.push(task);
+  renderTasks(list);
+  document.querySelector(`[data-block-id="${task.id}"] .block-text`)?.focus();
+  persistList();
+}
+
+function blockRow(task, index, count) {
   const row = document.createElement("div");
-  row.className = "task-row";
+  row.className = `block-row block-${task.type || "checklist"}`;
+  row.dataset.blockId = task.id;
   row.classList.toggle("completed", task.completed);
-  const check = document.createElement("input");
-  check.type = "checkbox";
-  check.checked = task.completed;
-  check.setAttribute("aria-label", "Tandai tugas selesai");
-  check.addEventListener("change", () => {
-    task.completed = check.checked;
-    row.classList.toggle("completed", task.completed);
-    persistList();
-  });
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "task-text";
+  if ((task.type || "checklist") === "checklist") {
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.checked = task.completed;
+    check.setAttribute("aria-label", "Tandai tugas selesai");
+    check.addEventListener("change", () => {
+      task.completed = check.checked;
+      row.classList.toggle("completed", task.completed);
+      persistList();
+    });
+    row.append(check);
+  } else {
+    const icon = document.createElement("span");
+    icon.className = "block-icon";
+    icon.textContent = task.type === "heading" ? "H" : "≡";
+    icon.setAttribute("aria-hidden", "true");
+    row.append(icon);
+  }
+  const input = document.createElement("textarea");
+  input.className = "block-text";
   input.maxLength = 500;
-  input.placeholder = "Tulis tugas…";
+  input.rows = 1;
+  input.placeholder = task.type === "heading" ? "Judul bagian…" : task.type === "note" ? "Tulis catatan…" : "Tulis tugas…";
   input.value = task.text;
+  requestAnimationFrame(() => resizeBlockText(input));
   input.addEventListener("input", () => {
     task.text = input.value;
+    resizeBlockText(input);
     updateTaskCount();
     persistList();
     schedulePreview();
   });
   input.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && task.type !== "note" && !event.shiftKey) {
       event.preventDefault();
-      row.parentElement?.querySelector(".add-task")?.click();
+      const list = currentList();
+      if (list) addBlock(list, task.day, "checklist");
     }
   });
+  row.append(input);
+  for (const [direction, label, disabled] of [[-1, "Naikkan blok", index === 0], [1, "Turunkan blok", index === count - 1]]) {
+    const move = document.createElement("button");
+    move.type = "button";
+    move.className = "move-block";
+    move.textContent = direction < 0 ? "↑" : "↓";
+    move.title = label;
+    move.setAttribute("aria-label", label);
+    move.disabled = disabled;
+    move.addEventListener("click", () => moveBlock(task, direction));
+    row.append(move);
+  }
   const remove = document.createElement("button");
   remove.type = "button";
-  remove.className = "delete-task";
+  remove.className = "delete-block";
   remove.textContent = "×";
-  remove.title = "Hapus tugas";
-  remove.setAttribute("aria-label", "Hapus tugas");
+  remove.title = "Hapus blok";
+  remove.setAttribute("aria-label", "Hapus blok");
   remove.addEventListener("click", () => {
     const list = currentList();
     if (!list) return;
     list.tasks = list.tasks.filter((item) => item.id !== task.id);
-    row.remove();
-    updateTaskCount();
+    renderTasks(list);
     persistList();
     schedulePreview();
   });
-  row.append(check, input, remove);
+  row.append(remove);
   return row;
+}
+
+function resizeBlockText(input) {
+  input.style.height = "auto";
+  input.style.height = `${Math.max(38, input.scrollHeight)}px`;
+}
+
+function moveBlock(task, direction) {
+  const list = currentList();
+  if (!list) return;
+  const siblings = list.tasks.filter((item) => item.day === task.day);
+  const index = siblings.findIndex((item) => item.id === task.id);
+  const neighbor = siblings[index + direction];
+  if (!neighbor) return;
+  const from = list.tasks.findIndex((item) => item.id === task.id);
+  const to = list.tasks.findIndex((item) => item.id === neighbor.id);
+  [list.tasks[from], list.tasks[to]] = [list.tasks[to], list.tasks[from]];
+  renderTasks(list);
+  persistList();
+  schedulePreview();
 }
 
 function updateTaskCount() {
   const count = currentList()?.tasks.filter((task) => task.text.trim()).length || 0;
-  $("taskCount").textContent = `${count} tugas`;
+  $("taskCount").textContent = `${count} blok`;
 }
 
 function schedulePreview(delay = 450) {
@@ -392,7 +449,7 @@ function renderHistory() {
     const name = document.createElement("strong");
     name.textContent = list.title.trim() || (list.kind === "daily" ? "Daftar harian" : "Daftar mingguan");
     const detail = document.createElement("small");
-    detail.textContent = `${list.kind === "daily" ? humanDate(list.date) : weekLabel(list.date)} · ${list.tasks.length} tugas`;
+    detail.textContent = `${list.kind === "daily" ? humanDate(list.date) : weekLabel(list.date)} · ${list.tasks.length} blok`;
     main.append(name, detail);
     const actions = document.createElement("div");
     actions.className = "history-actions";
