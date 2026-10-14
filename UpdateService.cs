@@ -122,14 +122,21 @@ internal static class UpdateService
 
         progress("Membangun aplikasi dari repo…");
         if (Directory.Exists(stage)) Directory.Delete(stage, true);
-        var dotnet = await FindDotnetSdkAsync(cancellationToken);
+        var dotnet = FindDotnetSdk();
         progress($"Menggunakan SDK .NET: {dotnet}");
-        await RunAsync(dotnet,
-            ["publish", Path.Combine(source, ProjectFile), "-c", "Release", "-r", "win-x64",
-             "--self-contained", "true", "-p:PublishSingleFile=true",
-             "-p:IncludeNativeLibrariesForSelfExtract=true", "-o", stage, "--nologo", "-v:q"],
-            source, TimeSpan.FromMinutes(10), cancellationToken,
-            dotnetRoot: Path.GetDirectoryName(dotnet));
+        try
+        {
+            await RunAsync(dotnet,
+                ["publish", Path.Combine(source, ProjectFile), "-c", "Release", "-r", "win-x64",
+                 "--self-contained", "true", "-p:PublishSingleFile=true",
+                 "-p:IncludeNativeLibrariesForSelfExtract=true", "-o", stage, "--nologo", "-v:q"],
+                source, TimeSpan.FromMinutes(10), cancellationToken,
+                dotnetRoot: Path.GetDirectoryName(dotnet));
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new InvalidOperationException($"Build menggunakan {dotnet} gagal: {ex.Message}", ex);
+        }
         var stagedExe = Path.Combine(stage, ExeFile);
         if (!File.Exists(stagedExe) || !File.Exists(Path.Combine(stage, "assets", "index.html")))
             throw new InvalidOperationException("Hasil build tidak berisi aplikasi lengkap.");
@@ -139,33 +146,33 @@ internal static class UpdateService
             new PreparedUpdate(stagedExe, Path.Combine(appDirectory, ExeFile), commit));
     }
 
-    internal static async Task<string> FindDotnetSdkAsync(CancellationToken cancellationToken = default)
+    internal static string FindDotnetSdk()
     {
         var localAppData = Environment.GetEnvironmentVariable("LOCALAPPDATA");
         var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
-        var candidates = new[]
+        var userProfile = Environment.GetEnvironmentVariable("USERPROFILE");
+        var candidates = new List<string>
         {
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "dotnet", "dotnet.exe"),
             string.IsNullOrWhiteSpace(localAppData) ? "" :
                 Path.Combine(localAppData, "Microsoft", "dotnet", "dotnet.exe"),
+            string.IsNullOrWhiteSpace(userProfile) ? "" :
+                Path.Combine(userProfile, "AppData", "Local", "Microsoft", "dotnet", "dotnet.exe"),
             string.IsNullOrWhiteSpace(dotnetRoot) ? "" : Path.Combine(dotnetRoot, "dotnet.exe"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                "dotnet", "dotnet.exe"),
-            "dotnet"
+                "dotnet", "dotnet.exe")
         };
+        candidates.AddRange((Environment.GetEnvironmentVariable("PATH") ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(directory => Path.Combine(directory, "dotnet.exe")));
         foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            if (candidate.Length == 0) continue;
-            if (Path.IsPathFullyQualified(candidate) && !File.Exists(candidate)) continue;
-            try
-            {
-                var sdks = await RunAsync(candidate, ["--list-sdks"],
-                    AppContext.BaseDirectory, TimeSpan.FromSeconds(15), cancellationToken);
-                if (sdks.Split('\n').Any(line => line.TrimStart().StartsWith("10.", StringComparison.Ordinal)))
-                    return candidate;
-            }
-            catch (InvalidOperationException) { }
+            if (!Path.IsPathFullyQualified(candidate) || !File.Exists(candidate)) continue;
+            var sdkDirectory = Path.Combine(Path.GetDirectoryName(candidate)!, "sdk");
+            if (Directory.Exists(sdkDirectory) &&
+                Directory.EnumerateDirectories(sdkDirectory, "10.*").Any())
+                return candidate;
         }
         throw new InvalidOperationException(
             "SDK .NET 10 tidak ditemukan. Pasang SDK .NET 10, lalu buka ulang aplikasi dan coba Update lagi.");
@@ -192,6 +199,9 @@ internal static class UpdateService
         {
             process.StartInfo.Environment["DOTNET_ROOT"] = dotnetRoot;
             process.StartInfo.Environment["DOTNET_ROOT_X64"] = dotnetRoot;
+            process.StartInfo.Environment["DOTNET_HOST_PATH"] = command;
+            process.StartInfo.Environment["PATH"] = dotnetRoot + Path.PathSeparator +
+                process.StartInfo.Environment["PATH"];
         }
         try { process.Start(); }
         catch (Win32Exception ex)
