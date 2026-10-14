@@ -122,15 +122,14 @@ internal static class UpdateService
 
         progress("Membangun aplikasi dari repo…");
         if (Directory.Exists(stage)) Directory.Delete(stage, true);
-        var dotnet = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Microsoft", "dotnet", "dotnet.exe");
-        if (!File.Exists(dotnet)) dotnet = "dotnet";
+        var dotnet = await FindDotnetSdkAsync(cancellationToken);
+        progress($"Menggunakan SDK .NET: {dotnet}");
         await RunAsync(dotnet,
             ["publish", Path.Combine(source, ProjectFile), "-c", "Release", "-r", "win-x64",
              "--self-contained", "true", "-p:PublishSingleFile=true",
              "-p:IncludeNativeLibrariesForSelfExtract=true", "-o", stage, "--nologo", "-v:q"],
-            source, TimeSpan.FromMinutes(10), cancellationToken);
+            source, TimeSpan.FromMinutes(10), cancellationToken,
+            dotnetRoot: Path.GetDirectoryName(dotnet));
         var stagedExe = Path.Combine(stage, ExeFile);
         if (!File.Exists(stagedExe) || !File.Exists(Path.Combine(stage, "assets", "index.html")))
             throw new InvalidOperationException("Hasil build tidak berisi aplikasi lengkap.");
@@ -140,8 +139,41 @@ internal static class UpdateService
             new PreparedUpdate(stagedExe, Path.Combine(appDirectory, ExeFile), commit));
     }
 
+    internal static async Task<string> FindDotnetSdkAsync(CancellationToken cancellationToken = default)
+    {
+        var localAppData = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        var candidates = new[]
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "dotnet", "dotnet.exe"),
+            string.IsNullOrWhiteSpace(localAppData) ? "" :
+                Path.Combine(localAppData, "Microsoft", "dotnet", "dotnet.exe"),
+            string.IsNullOrWhiteSpace(dotnetRoot) ? "" : Path.Combine(dotnetRoot, "dotnet.exe"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "dotnet", "dotnet.exe"),
+            "dotnet"
+        };
+        foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (candidate.Length == 0) continue;
+            if (Path.IsPathFullyQualified(candidate) && !File.Exists(candidate)) continue;
+            try
+            {
+                var sdks = await RunAsync(candidate, ["--list-sdks"],
+                    AppContext.BaseDirectory, TimeSpan.FromSeconds(15), cancellationToken);
+                if (sdks.Split('\n').Any(line => line.TrimStart().StartsWith("10.", StringComparison.Ordinal)))
+                    return candidate;
+            }
+            catch (InvalidOperationException) { }
+        }
+        throw new InvalidOperationException(
+            "SDK .NET 10 tidak ditemukan. Pasang SDK .NET 10, lalu buka ulang aplikasi dan coba Update lagi.");
+    }
+
     private static async Task<string> RunAsync(string command, IEnumerable<string> arguments,
-        string workingDirectory, TimeSpan timeout, CancellationToken cancellationToken)
+        string workingDirectory, TimeSpan timeout, CancellationToken cancellationToken,
+        string? dotnetRoot = null)
     {
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo(command)
@@ -156,6 +188,11 @@ internal static class UpdateService
         process.StartInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
         process.StartInfo.Environment["GCM_INTERACTIVE"] = "never";
         process.StartInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+        if (dotnetRoot is not null)
+        {
+            process.StartInfo.Environment["DOTNET_ROOT"] = dotnetRoot;
+            process.StartInfo.Environment["DOTNET_ROOT_X64"] = dotnetRoot;
+        }
         try { process.Start(); }
         catch (Win32Exception ex)
         {
