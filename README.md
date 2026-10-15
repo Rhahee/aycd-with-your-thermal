@@ -4,7 +4,7 @@
 
 ## Instalasi langkah demi langkah
 
-1. Siapkan file installer `All-You-Can-Do-with-Your-Thermal-Printer-Setup-<versi>-win-x64.exe`. Minta file tersebut dari pembuat aplikasi, atau [buat sendiri dari source](#membuat-installer). File installer berada di `installer\output\` setelah proses build dan tidak disimpan di Git.
+1. Buka [halaman rilis AYCD Printer](https://github.com/Rhahee/aycd-with-your-thermal/releases/latest), lalu unduh file `All-You-Can-Do-with-Your-Thermal-Printer-Setup-<versi>-win-x64.exe` pada bagian **Assets**. Jangan unduh **Source code (zip)** untuk instalasi. Jika ingin membuat installer sendiri, ikuti [panduan build](#membuat-installer).
 2. Klik dua kali file installer di laptop Windows x64, lalu ikuti petunjuk yang muncul. Pemasangan dilakukan untuk akun Windows yang sedang dipakai, sehingga tidak memerlukan hak administrator.
 3. Pilih apakah ingin membuat pintasan desktop, lalu klik **Install**. Installer membuat pintasan di Start Menu dan memasang WebView2 Runtime jika belum tersedia. Sediakan koneksi internet jika WebView2 perlu dipasang.
 4. Setelah selesai, klik **Finish** dan buka **All You Can Do with Your Thermal Printer** dari Start Menu. Jika pintasan desktop dipilih, aplikasi juga bisa dibuka dari sana.
@@ -29,9 +29,9 @@ Daftar dan pengaturan disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Untuk m
 
 ## Pembaruan aplikasi
 
-Di bagian bawah **Settings**, klik **Cek Update**. Aplikasi mengambil commit terbaru dari [repo ini](https://github.com/Rhahee/aycd-with-your-thermal) pada branch `main`. Jika tersedia, tombol **Update** akan aktif. Tombol itu membangun aplikasi dari source, memasang hasilnya di folder aplikasi, lalu membuka ulang aplikasi. Versi dan commit yang terpasang ditampilkan di kiri bawah sidebar.
+Di bagian bawah **Settings**, klik **Cek Update**. Aplikasi memeriksa versi terbaru di [GitHub Releases](https://github.com/Rhahee/aycd-with-your-thermal/releases/latest). Jika tersedia, tombol **Update** akan aktif. Tombol itu mengunduh paket aplikasi siap pakai, memeriksa checksum SHA-256, memasangnya, lalu membuka ulang aplikasi. Versi dan commit yang terpasang ditampilkan di kiri bawah sidebar.
 
-**Cek Update** memerlukan Git dan akses ke GitHub. **Update** juga memerlukan SDK .NET 10 dan izin menulis ke folder instalasi. Installer sudah membawa .NET Desktop Runtime untuk menjalankan aplikasi, tetapi runtime tersebut tidak menggantikan SDK yang diperlukan untuk membangun update. Jika update gagal, daftar tetap tersimpan; salinan executable sebelumnya tersedia sebagai `PrintToDo.exe.previous` bila penggantian file sudah dimulai. Karena source dari repo dibangun dan dijalankan di komputer, gunakan hanya repo yang Anda percayai.
+Update memerlukan koneksi internet ke GitHub dan izin menulis ke folder instalasi. Pengguna tidak perlu memasang Git atau SDK .NET. Jika update gagal, daftar tetap tersimpan; salinan executable sebelumnya tersedia sebagai `PrintToDo.exe.previous` bila penggantian file sudah dimulai. Pengguna versi 1.0.3 atau lebih lama dapat memasang installer terbaru di atas versi lama untuk beralih ke sistem update baru tanpa menghapus daftar.
 
 ## Dukungan printer
 
@@ -61,6 +61,8 @@ Pasang Inno Setup 6, lalu commit dan push perubahan ke `main`. Skrip installer m
 .\installer\Build-Installer.ps1
 ```
 
-Skrip melakukan publish aplikasi, mengunduh bootstrapper WebView2 dari Microsoft jika belum ada, memeriksa tanda tangan digitalnya, dan membuat installer di `installer\output\`. Folder `dist\`, `installer\output\`, dan `installer\prerequisites\` tidak dilacak Git.
+Skrip melakukan publish aplikasi, mengunduh bootstrapper WebView2 dari Microsoft jika belum ada, memeriksa tanda tangan digitalnya, lalu membuat installer `.exe` dan paket update `.zip` di `installer\output\`. Folder `dist\`, `installer\output\`, dan `installer\prerequisites\` tidak dilacak Git.
+
+Untuk menerbitkan versi baru, samakan nomor versi di `PrintToDo.csproj` dan `installer/PrintToDo.iss`, push commit ke `main`, lalu push tag `v<versi>` pada commit tersebut. Workflow `.github/workflows/release.yml` menjalankan pengujian, membangun kedua berkas pada Windows, dan menambahkannya ke GitHub Releases.
 
 Installer memasang aplikasi ke `%LOCALAPPDATA%\Programs\All You Can Do with Your Thermal Printer` untuk pengguna Windows saat ini, membuat pintasan Start Menu, dan menawarkan pintasan desktop. Koneksi internet diperlukan saat instalasi jika WebView2 Runtime perlu dipasang.

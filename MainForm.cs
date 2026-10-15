@@ -120,7 +120,7 @@ internal sealed class MainForm : Form
                     data = new
                     {
                         installedCommit = UpdateService.GetInstalledCommit(AppContext.BaseDirectory),
-                        appVersion = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.3"
+                        appVersion = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.4"
                     };
                     break;
                 case "checkUpdate":
@@ -130,10 +130,11 @@ internal sealed class MainForm : Form
                     {
                         _preparedUpdate = null;
                         _updateAvailable = false;
-                        var result = await UpdateService.PrepareAsync(new UpdateSettings(),
-                            AppContext.BaseDirectory, PostUpdateProgress, prepareRelease: false);
+                        var result = await UpdateService.PrepareAsync(
+                            AppContext.BaseDirectory, typeof(MainForm).Assembly.GetName().Version!,
+                            PostUpdateProgress, prepareRelease: false);
                         _updateAvailable = result.Status == "available";
-                        data = new { result.Status, result.Commit };
+                        data = new { result.Status, result.Version };
                     }
                     finally { _updateGate.Release(); }
                     break;
@@ -145,8 +146,9 @@ internal sealed class MainForm : Form
                     try
                     {
                         _preparedUpdate = null;
-                        var release = await UpdateService.PrepareAsync(new UpdateSettings(),
-                            AppContext.BaseDirectory, PostUpdateProgress);
+                        var release = await UpdateService.PrepareAsync(
+                            AppContext.BaseDirectory, typeof(MainForm).Assembly.GetName().Version!,
+                            PostUpdateProgress);
                         _preparedUpdate = release.Prepared
                             ?? throw new InvalidOperationException("Aplikasi sudah versi terbaru. Tekan Cek Update lagi.");
                     }

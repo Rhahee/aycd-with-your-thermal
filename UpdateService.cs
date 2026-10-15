@@ -1,44 +1,29 @@
-using System.ComponentModel;
-using System.Diagnostics;
+using System.IO.Compression;
 using System.Security.Cryptography;
-using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace PrintToDo;
 
-internal sealed record PreparedUpdate(string StagedExe, string TargetExe, string Commit);
-internal sealed record UpdateCheckResult(string Status, string Commit, PreparedUpdate? Prepared);
+internal sealed record PreparedUpdate(string StagedExe, string TargetExe, string Version);
+internal sealed record UpdateCheckResult(string Status, string Version, PreparedUpdate? Prepared);
 
 internal static class UpdateService
 {
-    private const string ProjectFile = "PrintToDo.csproj";
     private const string ExeFile = "PrintToDo.exe";
     private const string MarkerFile = "update-commit.txt";
+    private const string ReleaseApi = "https://api.github.com/repos/Rhahee/aycd-with-your-thermal/releases/latest";
+    private const string AssetPrefix = "AYCD-Printer-";
+    private const string AssetSuffix = "-win-x64.zip";
+    private const long MaxArchiveBytes = 250L * 1024 * 1024;
+    private const long MaxExpandedBytes = 400L * 1024 * 1024;
+    private static readonly HttpClient SharedClient = CreateClient();
 
+    // Kept for reading settings saved by older versions. Releases now come from this app's official repository.
     public static void ValidateSettings(UpdateSettings settings)
     {
-        var url = settings.RepositoryUrl?.Trim() ?? "";
-        var branch = settings.Branch?.Trim() ?? "";
-        if (url.Length > 2048 || branch.Length > 100)
+        if (settings.RepositoryUrl?.Length > 2048 || settings.Branch?.Length > 100)
             throw new ArgumentException("Alamat repo atau nama branch terlalu panjang.");
-        if (url.Length > 0 && !IsSupportedRepository(url))
-            throw new ArgumentException("Gunakan URL repo HTTPS, SSH, atau file:// yang valid.");
-        if (branch.Length > 0 &&
-            (!Regex.IsMatch(branch, @"^[A-Za-z0-9][A-Za-z0-9._/-]*$") ||
-             branch.Contains("..", StringComparison.Ordinal) ||
-             branch.EndsWith('/') || branch.EndsWith(".lock", StringComparison.OrdinalIgnoreCase)))
-            throw new ArgumentException("Nama branch tidak valid.");
-    }
-
-    private static bool IsSupportedRepository(string url)
-    {
-        if (Regex.IsMatch(url, @"^git@[A-Za-z0-9.-]+:[A-Za-z0-9._/-]+(?:\.git)?$"))
-            return true;
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
-            uri.Scheme is not ("https" or "ssh" or "file"))
-            return false;
-        return uri.Scheme == "file" ||
-               (!string.IsNullOrWhiteSpace(uri.Host) && string.IsNullOrEmpty(uri.UserInfo));
     }
 
     public static string? GetInstalledCommit(string appDirectory)
@@ -50,182 +35,128 @@ internal static class UpdateService
     }
 
     public static async Task<UpdateCheckResult> PrepareAsync(
-        UpdateSettings settings, string appDirectory, Action<string> progress,
-        CancellationToken cancellationToken = default, bool prepareRelease = true)
+        string appDirectory, Version installedVersion, Action<string> progress,
+        CancellationToken cancellationToken = default, bool prepareRelease = true,
+        HttpClient? client = null, string? workspaceDirectory = null)
     {
-        ValidateSettings(settings);
-        var url = settings.RepositoryUrl.Trim();
-        var branch = settings.Branch.Trim();
-        if (url.Length == 0)
-            throw new InvalidOperationException("Isi URL repo pada Settings terlebih dahulu.");
+        client ??= SharedClient;
+        progress("Memeriksa rilis terbaru…");
+        using var response = await client.GetAsync(ReleaseApi, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        await using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        using var document = await JsonDocument.ParseAsync(responseStream, cancellationToken: cancellationToken);
+        var release = document.RootElement;
+        var tag = release.GetProperty("tag_name").GetString() ?? "";
+        if (!Regex.IsMatch(tag, @"^v[0-9]+\.[0-9]+\.[0-9]+$", RegexOptions.CultureInvariant) ||
+            !Version.TryParse(tag[1..], out var releaseVersion))
+            throw new InvalidDataException("Nomor versi rilis GitHub tidak valid.");
 
-        var key = Convert.ToHexString(SHA256.HashData(
-            Encoding.UTF8.GetBytes(url + "\n" + branch)))[..16].ToLowerInvariant();
-        var workspace = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PrintToDo", "Updates", key);
-        var source = Path.Combine(workspace, "source");
-        var stage = Path.Combine(workspace, "stage");
-        Directory.CreateDirectory(workspace);
-
-        if (!Directory.Exists(source))
+        if (releaseVersion <= installedVersion)
         {
-            progress("Mengambil repo untuk pertama kali…");
-            var partial = Path.Combine(workspace, "source.partial");
-            if (Directory.Exists(partial)) Directory.Delete(partial, true);
-            var arguments = new List<string> { "clone" };
-            if (branch.Length > 0) arguments.AddRange(["--branch", branch]);
-            arguments.AddRange(["--", url, partial]);
-            try
-            {
-                await RunAsync("git", arguments, workspace, TimeSpan.FromMinutes(5), cancellationToken);
-                Directory.Move(partial, source);
-            }
-            catch
-            {
-                if (Directory.Exists(partial)) Directory.Delete(partial, true);
-                throw;
-            }
-        }
-        else
-        {
-            if (!Directory.Exists(Path.Combine(source, ".git")))
-                throw new InvalidOperationException("Folder update bukan checkout Git yang valid.");
-            var configuredUrl = (await RunAsync("git", ["-C", source, "remote", "get-url", "origin"],
-                source, TimeSpan.FromSeconds(30), cancellationToken)).Trim();
-            if (!string.Equals(configuredUrl, url, StringComparison.Ordinal))
-                throw new InvalidOperationException("Alamat remote checkout update tidak cocok dengan Settings.");
-            var changes = (await RunAsync("git", ["-C", source, "status", "--porcelain"],
-                source, TimeSpan.FromSeconds(30), cancellationToken)).Trim();
-            if (changes.Length > 0)
-                throw new InvalidOperationException("Checkout update memiliki perubahan lokal. Periksa folder update sebelum menarik versi baru.");
-            progress("Menarik perubahan repo…");
-            await RunAsync("git", ["-C", source, "pull", "--ff-only"],
-                source, TimeSpan.FromMinutes(5), cancellationToken);
+            progress("Aplikasi sudah menggunakan rilis terbaru.");
+            return new UpdateCheckResult("current", tag, null);
         }
 
-        if (!File.Exists(Path.Combine(source, ProjectFile)))
-            throw new InvalidOperationException("Repo tidak berisi PrintToDo.csproj.");
-        var commit = (await RunAsync("git", ["-C", source, "rev-parse", "HEAD"],
-            source, TimeSpan.FromSeconds(30), cancellationToken)).Trim();
-        var marker = Path.Combine(appDirectory, MarkerFile);
-        if (File.Exists(marker) &&
-            string.Equals(File.ReadAllText(marker).Trim(), key + "\n" + commit,
-                StringComparison.OrdinalIgnoreCase))
-        {
-            progress("Aplikasi sudah menggunakan commit terbaru.");
-            return new UpdateCheckResult("current", commit, null);
-        }
+        var assetName = AssetPrefix + releaseVersion + AssetSuffix;
+        var asset = release.GetProperty("assets").EnumerateArray()
+            .FirstOrDefault(item => item.GetProperty("name").GetString() == assetName);
+        if (asset.ValueKind == JsonValueKind.Undefined)
+            throw new InvalidDataException($"Rilis {tag} belum menyediakan paket update Windows.");
+        var assetUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
+        var expectedPrefix = "https://github.com/Rhahee/aycd-with-your-thermal/releases/download/" + tag + "/";
+        if (assetUrl != expectedPrefix + assetName)
+            throw new InvalidDataException("Alamat paket update tidak sesuai dengan rilis resmi.");
+        var digest = asset.GetProperty("digest").GetString() ?? "";
+        if (!Regex.IsMatch(digest, @"^sha256:[0-9a-fA-F]{64}$", RegexOptions.CultureInvariant))
+            throw new InvalidDataException("Rilis belum menyediakan checksum SHA-256 paket update.");
+        var expectedSize = asset.GetProperty("size").GetInt64();
+        if (expectedSize is <= 0 or > MaxArchiveBytes)
+            throw new InvalidDataException("Ukuran paket update tidak valid.");
 
         if (!prepareRelease)
-            return new UpdateCheckResult("available", commit, null);
+            return new UpdateCheckResult("available", tag, null);
 
-        progress("Membangun aplikasi dari repo…");
+        var workspace = workspaceDirectory ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PrintToDo", "Updates", "release");
+        Directory.CreateDirectory(workspace);
+        var archivePath = Path.Combine(workspace, "update.zip");
+        var stage = Path.Combine(workspace, "stage");
+        if (File.Exists(archivePath)) File.Delete(archivePath);
         if (Directory.Exists(stage)) Directory.Delete(stage, true);
-        var dotnet = FindDotnetSdk();
-        progress($"Menggunakan SDK .NET: {dotnet}");
+
         try
         {
-            await RunAsync(dotnet,
-                ["publish", Path.Combine(source, ProjectFile), "-c", "Release", "-r", "win-x64",
-                 "--self-contained", "true", "-p:PublishSingleFile=true",
-                 "-p:IncludeNativeLibrariesForSelfExtract=true", "-o", stage, "--nologo", "-v:q"],
-                source, TimeSpan.FromMinutes(10), cancellationToken,
-                dotnetRoot: Path.GetDirectoryName(dotnet));
+            progress($"Mengunduh {tag}…");
+            using var archiveResponse = await client.GetAsync(assetUrl,
+                HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            archiveResponse.EnsureSuccessStatusCode();
+            await using (var input = await archiveResponse.Content.ReadAsStreamAsync(cancellationToken))
+            await using (var output = new FileStream(archivePath, FileMode.CreateNew, FileAccess.Write,
+                FileShare.None, 81920, useAsync: true))
+            {
+                var buffer = new byte[81920];
+                long total = 0;
+                int count;
+                while ((count = await input.ReadAsync(buffer, cancellationToken)) > 0)
+                {
+                    total += count;
+                    if (total > MaxArchiveBytes)
+                        throw new InvalidDataException("Paket update terlalu besar.");
+                    await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
+                }
+                if (total != expectedSize)
+                    throw new InvalidDataException("Ukuran unduhan tidak sesuai dengan rilis.");
+            }
+            await using (var input = File.OpenRead(archivePath))
+            {
+                var actual = Convert.ToHexString(
+                    await SHA256.HashDataAsync(input, cancellationToken));
+                if (!actual.Equals(digest[7..], StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Checksum paket update tidak cocok.");
+            }
+
+            progress("Menyiapkan paket update…");
+            using (var archive = ZipFile.OpenRead(archivePath))
+            {
+                if (archive.Entries.Count > 100 ||
+                    archive.Entries.Sum(entry => entry.Length) > MaxExpandedBytes)
+                    throw new InvalidDataException("Isi paket update terlalu besar.");
+                archive.ExtractToDirectory(stage);
+            }
+            var stagedExe = Path.Combine(stage, ExeFile);
+            if (!File.Exists(stagedExe) ||
+                !File.Exists(Path.Combine(stage, "assets", "index.html")) ||
+                !File.Exists(Path.Combine(stage, "assets", "app.js")) ||
+                !File.Exists(Path.Combine(stage, "assets", "styles.css")) ||
+                !File.Exists(Path.Combine(stage, MarkerFile)))
+                throw new InvalidDataException("Paket update tidak berisi aplikasi lengkap.");
+            var fileVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(stagedExe)
+                .ProductVersion?.Split('+', 2)[0];
+            if (!Version.TryParse(fileVersion, out var stagedVersion) ||
+                stagedVersion != releaseVersion)
+                throw new InvalidDataException("Versi aplikasi dalam paket tidak sesuai dengan rilis.");
+            progress("Rilis baru siap dipasang.");
+            return new UpdateCheckResult("ready", tag,
+                new PreparedUpdate(stagedExe, Path.Combine(appDirectory, ExeFile), tag));
         }
-        catch (InvalidOperationException ex)
+        catch
         {
-            throw new InvalidOperationException($"Build menggunakan {dotnet} gagal: {ex.Message}", ex);
+            if (Directory.Exists(stage)) Directory.Delete(stage, true);
+            throw;
         }
-        var stagedExe = Path.Combine(stage, ExeFile);
-        if (!File.Exists(stagedExe) || !File.Exists(Path.Combine(stage, "assets", "index.html")))
-            throw new InvalidOperationException("Hasil build tidak berisi aplikasi lengkap.");
-        File.WriteAllText(Path.Combine(stage, MarkerFile), key + "\n" + commit + "\n");
-        progress("Rilis baru siap dipasang.");
-        return new UpdateCheckResult("ready", commit,
-            new PreparedUpdate(stagedExe, Path.Combine(appDirectory, ExeFile), commit));
+        finally
+        {
+            if (File.Exists(archivePath)) File.Delete(archivePath);
+        }
     }
 
-    internal static string FindDotnetSdk()
+    private static HttpClient CreateClient()
     {
-        var localAppData = Environment.GetEnvironmentVariable("LOCALAPPDATA");
-        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
-        var userProfile = Environment.GetEnvironmentVariable("USERPROFILE");
-        var candidates = new List<string>
-        {
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Microsoft", "dotnet", "dotnet.exe"),
-            string.IsNullOrWhiteSpace(localAppData) ? "" :
-                Path.Combine(localAppData, "Microsoft", "dotnet", "dotnet.exe"),
-            string.IsNullOrWhiteSpace(userProfile) ? "" :
-                Path.Combine(userProfile, "AppData", "Local", "Microsoft", "dotnet", "dotnet.exe"),
-            string.IsNullOrWhiteSpace(dotnetRoot) ? "" : Path.Combine(dotnetRoot, "dotnet.exe"),
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                "dotnet", "dotnet.exe")
-        };
-        candidates.AddRange((Environment.GetEnvironmentVariable("PATH") ?? "")
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Select(directory => Path.Combine(directory, "dotnet.exe")));
-        foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            if (!Path.IsPathFullyQualified(candidate) || !File.Exists(candidate)) continue;
-            var sdkDirectory = Path.Combine(Path.GetDirectoryName(candidate)!, "sdk");
-            if (Directory.Exists(sdkDirectory) &&
-                Directory.EnumerateDirectories(sdkDirectory, "10.*").Any())
-                return candidate;
-        }
-        throw new InvalidOperationException(
-            "SDK .NET 10 tidak ditemukan. Pasang SDK .NET 10, lalu buka ulang aplikasi dan coba Update lagi.");
-    }
-
-    private static async Task<string> RunAsync(string command, IEnumerable<string> arguments,
-        string workingDirectory, TimeSpan timeout, CancellationToken cancellationToken,
-        string? dotnetRoot = null)
-    {
-        using var process = new Process();
-        process.StartInfo = new ProcessStartInfo(command)
-        {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
-        process.StartInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
-        process.StartInfo.Environment["GCM_INTERACTIVE"] = "never";
-        process.StartInfo.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
-        if (dotnetRoot is not null)
-        {
-            process.StartInfo.Environment["DOTNET_ROOT"] = dotnetRoot;
-            process.StartInfo.Environment["DOTNET_ROOT_X64"] = dotnetRoot;
-            process.StartInfo.Environment["DOTNET_HOST_PATH"] = command;
-            process.StartInfo.Environment["PATH"] = dotnetRoot + Path.PathSeparator +
-                process.StartInfo.Environment["PATH"];
-        }
-        try { process.Start(); }
-        catch (Win32Exception ex)
-        {
-            throw new InvalidOperationException($"Perintah {Path.GetFileName(command)} tidak dapat dijalankan. Pastikan Git dan SDK .NET terpasang.", ex);
-        }
-        var output = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var error = process.StandardError.ReadToEndAsync(cancellationToken);
-        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutSource.CancelAfter(timeout);
-        try { await process.WaitForExitAsync(timeoutSource.Token); }
-        catch (OperationCanceledException)
-        {
-            if (!process.HasExited) process.Kill(entireProcessTree: true);
-            throw new TimeoutException($"Perintah {Path.GetFileName(command)} terlalu lama atau dibatalkan.");
-        }
-        var standardOutput = await output;
-        var standardError = await error;
-        if (process.ExitCode != 0)
-        {
-            var detail = (standardError + "\n" + standardOutput).Trim();
-            if (detail.Length > 1800) detail = detail[^1800..];
-            throw new InvalidOperationException($"{Path.GetFileName(command)} gagal: {detail}");
-        }
-        return standardOutput;
+        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("AYCD-Printer-Updater");
+        client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+        client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
+        return client;
     }
 }

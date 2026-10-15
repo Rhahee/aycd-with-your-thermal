@@ -1,7 +1,8 @@
 using System.Drawing;
-using System.Diagnostics;
+using System.IO.Compression;
+using System.Net;
 using System.Security.Cryptography;
-using System.Text;
+using System.Text.Json;
 using PrintToDo;
 
 var directory = Path.Combine(Path.GetTempPath(), "PrintToDoSmoke", Guid.NewGuid().ToString("N"));
@@ -162,13 +163,6 @@ try
     store.SaveUpdateSettings(updateSettings);
     Assert(new AppStore(directory).State.Update.Branch == "main",
         "Pengaturan repo tidak tersimpan.");
-    try
-    {
-        UpdateService.ValidateSettings(new UpdateSettings { RepositoryUrl = "http://example.com/app.git" });
-        throw new Exception("URL repo tidak aman diterima.");
-    }
-    catch (ArgumentException) { }
-
     var stage = Path.Combine(directory, "stage");
     var target = Path.Combine(directory, "target");
     Directory.CreateDirectory(Path.Combine(stage, "assets"));
@@ -184,58 +178,61 @@ try
            File.ReadAllText(Path.Combine(target, "PrintToDo.exe.previous")) == "old-version",
         "Penggantian berkas aplikasi atau cadangan versi lama gagal.");
 
-    var fixture = Path.Combine(directory, "git-fixture");
-    var fixtureAssets = Path.Combine(fixture, "assets");
     var install = Path.Combine(directory, "install");
-    Directory.CreateDirectory(fixtureAssets);
     Directory.CreateDirectory(install);
-    File.WriteAllText(Path.Combine(fixture, "PrintToDo.csproj"),
-        "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>WinExe</OutputType>" +
-        "<TargetFramework>net10.0-windows</TargetFramework></PropertyGroup>" +
-        "<ItemGroup><Content Include=\"assets\\**\\*\" CopyToOutputDirectory=\"PreserveNewest\" />" +
-        "</ItemGroup></Project>");
-    File.WriteAllText(Path.Combine(fixture, "Program.cs"), "class Program { static void Main() { } }");
-    File.WriteAllText(Path.Combine(fixtureAssets, "index.html"), "fixture v1");
-    File.WriteAllText(Path.Combine(fixture, ".gitignore"), "bin/\nobj/\n");
-    RunGit(fixture, "init", "-b", "main");
-    RunGit(fixture, "add", ".");
-    RunGit(fixture, "-c", "user.name=PrintToDoTest", "-c", "user.email=test@example.invalid",
-        "commit", "-m", "initial");
-    var fixtureUrl = new Uri(fixture + Path.DirectorySeparatorChar).AbsoluteUri;
-    var fixtureSettings = new UpdateSettings { RepositoryUrl = fixtureUrl, Branch = "main" };
-    var workspaceKey = Convert.ToHexString(SHA256.HashData(
-        Encoding.UTF8.GetBytes(fixtureUrl + "\nmain")))[..16].ToLowerInvariant();
-    var updateWorkspace = Path.Combine(Environment.GetFolderPath(
-        Environment.SpecialFolder.LocalApplicationData), "PrintToDo", "Updates", workspaceKey);
+    var fixtureExe = Path.Combine(AppContext.BaseDirectory, "PrintToDo.Smoke.exe");
+    var productVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(fixtureExe)
+        .ProductVersion!.Split('+', 2)[0];
+    var releaseVersion = Version.Parse(productVersion);
+    var releaseTag = "v" + releaseVersion;
+    var assetName = $"AYCD-Printer-{releaseVersion}-win-x64.zip";
+    var assetUrl = $"https://github.com/Rhahee/aycd-with-your-thermal/releases/download/{releaseTag}/{assetName}";
+    byte[] package;
+    using (var output = new MemoryStream())
+    {
+        using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            archive.CreateEntryFromFile(fixtureExe, "PrintToDo.exe");
+            foreach (var name in new[] { "index.html", "app.js", "styles.css" })
+            {
+                using var writer = new StreamWriter(archive.CreateEntry("assets/" + name).Open());
+                writer.Write(name);
+            }
+            using var marker = new StreamWriter(archive.CreateEntry("update-commit.txt").Open());
+            marker.Write("key\nnew-commit\n");
+        }
+        package = output.ToArray();
+    }
+    var digest = "sha256:" + Convert.ToHexString(SHA256.HashData(package)).ToLowerInvariant();
+    using var client = new HttpClient(new ReleaseHandler(releaseTag, assetName, assetUrl, digest, package));
+    var updateWorkspace = Path.Combine(directory, "update-workspace");
+    var oldVersion = new Version(0, 0, 0);
+    var current = await UpdateService.PrepareAsync(install, releaseVersion, _ => { },
+        client: client, workspaceDirectory: updateWorkspace);
+    Assert(current.Status == "current", "Versi rilis yang sama tidak dikenali.");
+    var checkedUpdate = await UpdateService.PrepareAsync(install, oldVersion, _ => { },
+        prepareRelease: false, client: client, workspaceDirectory: updateWorkspace);
+    Assert(checkedUpdate.Status == "available" && checkedUpdate.Prepared is null &&
+           !Directory.Exists(Path.Combine(updateWorkspace, "stage")),
+        "Cek Update mengunduh paket sebelum tombol Update ditekan.");
+    var prepared = await UpdateService.PrepareAsync(install, oldVersion, _ => { },
+        client: client, workspaceDirectory: updateWorkspace);
+    Assert(prepared.Status == "ready" && File.Exists(prepared.Prepared?.StagedExe) &&
+           !File.Exists(Path.Combine(updateWorkspace, "update.zip")),
+        "Paket rilis tidak disiapkan atau arsip sementara belum dibersihkan.");
+    var badDigest = "sha256:" + new string('0', 64);
+    using var badClient = new HttpClient(new ReleaseHandler(releaseTag, assetName, assetUrl,
+        badDigest, package));
     try
     {
-        var checkMessages = new List<string>();
-        var checkedUpdate = await UpdateService.PrepareAsync(fixtureSettings, install,
-            checkMessages.Add, prepareRelease: false);
-        Assert(checkedUpdate.Status == "available" && checkedUpdate.Prepared is null &&
-               !Directory.Exists(Path.Combine(updateWorkspace, "stage")) &&
-               !checkMessages.Any(message => message.Contains("Membangun")),
-            "Cek Update membangun atau memasang rilis sebelum tombol Update ditekan.");
-        var first = await UpdateService.PrepareAsync(fixtureSettings, install, _ => { });
-        Assert(first.Status == "ready" && File.Exists(first.Prepared?.StagedExe),
-            "Clone dan build pertama gagal.");
-        File.Copy(Path.Combine(Path.GetDirectoryName(first.Prepared!.StagedExe)!, "update-commit.txt"),
-            Path.Combine(install, "update-commit.txt"));
-        var same = await UpdateService.PrepareAsync(fixtureSettings, install, _ => { });
-        Assert(same.Status == "current", "Commit yang sama tidak dikenali sebagai versi terbaru.");
-        File.WriteAllText(Path.Combine(fixtureAssets, "index.html"), "fixture v2");
-        RunGit(fixture, "add", ".");
-        RunGit(fixture, "-c", "user.name=PrintToDoTest", "-c", "user.email=test@example.invalid",
-            "commit", "-m", "second");
-        var newer = await UpdateService.PrepareAsync(fixtureSettings, install, _ => { });
-        Assert(newer.Status == "ready" && newer.Commit != first.Commit,
-            "Pull commit baru tidak menghasilkan rilis baru.");
+        await UpdateService.PrepareAsync(install, oldVersion, _ => { },
+            client: badClient, workspaceDirectory: updateWorkspace);
+        throw new Exception("Checksum salah diterima.");
     }
-    finally
-    {
-        TryDeleteTree(updateWorkspace);
-    }
-    Console.WriteLine("LULUS: data, cetak 58/80 mm, port salah, clone/pull/build, dan pemasangan update.");
+    catch (InvalidDataException) { }
+    Assert(!Directory.Exists(Path.Combine(updateWorkspace, "stage")),
+        "Paket dengan checksum salah meninggalkan aplikasi yang siap dipasang.");
+    Console.WriteLine("LULUS: data, cetak 58/80 mm, port salah, rilis biner, checksum, dan pemasangan update.");
 }
 finally
 {
@@ -271,24 +268,6 @@ static bool HasClosingRule(Bitmap bitmap)
     return false;
 }
 
-static void RunGit(string workingDirectory, params string[] arguments)
-{
-    var info = new ProcessStartInfo("git")
-    {
-        WorkingDirectory = workingDirectory,
-        RedirectStandardError = true,
-        RedirectStandardOutput = true,
-        UseShellExecute = false,
-        CreateNoWindow = true
-    };
-    foreach (var argument in arguments) info.ArgumentList.Add(argument);
-    using var process = Process.Start(info) ?? throw new Exception("Git tidak dapat dijalankan.");
-    var output = process.StandardOutput.ReadToEnd();
-    var error = process.StandardError.ReadToEnd();
-    process.WaitForExit();
-    if (process.ExitCode != 0) throw new Exception($"Git fixture gagal: {error} {output}");
-}
-
 static void TryDeleteTree(string path)
 {
     if (!Directory.Exists(path)) return;
@@ -301,5 +280,28 @@ static void TryDeleteTree(string path)
     catch (Exception error)
     {
         Console.Error.WriteLine("Pembersihan folder uji gagal: " + error.Message);
+    }
+}
+
+sealed class ReleaseHandler(string tag, string assetName, string assetUrl, string digest,
+    byte[] package) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        if (request.RequestUri!.AbsoluteUri == assetUrl)
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                { Content = new ByteArrayContent(package) });
+        var json = JsonSerializer.Serialize(new
+        {
+            tag_name = tag,
+            assets = new[]
+            {
+                new { name = assetName, browser_download_url = assetUrl,
+                    digest, size = package.LongLength }
+            }
+        });
+        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            { Content = new StringContent(json) });
     }
 }

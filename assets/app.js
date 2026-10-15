@@ -72,7 +72,7 @@ async function loadVersion() {
     const info = await bridge("updateStatus");
     const commit = /^[0-9a-f]{7,40}$/i.test(info.installedCommit || "")
       ? ` · ${info.installedCommit.slice(0, 7)}` : "";
-    $("appVersion").textContent = `Versi ${info.appVersion || "1.0.3"}${commit}`;
+    $("appVersion").textContent = `Versi ${info.appVersion || "1.0.4"}${commit}`;
   } catch {
     $("appVersion").textContent = "Versi tidak tersedia";
   }
