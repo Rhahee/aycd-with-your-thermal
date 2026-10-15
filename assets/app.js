@@ -72,7 +72,7 @@ async function loadVersion() {
     const info = await bridge("updateStatus");
     const commit = /^[0-9a-f]{7,40}$/i.test(info.installedCommit || "")
       ? ` · ${info.installedCommit.slice(0, 7)}` : "";
-    $("appVersion").textContent = `Versi ${info.appVersion || "1.0.4"}${commit}`;
+    $("appVersion").textContent = `Versi ${info.appVersion || "1.0.5"}${commit}`;
   } catch {
     $("appVersion").textContent = "Versi tidak tersedia";
   }
@@ -100,7 +100,6 @@ function bindEvents() {
     persistList();
     schedulePreview();
   });
-  $("refreshPreview").addEventListener("click", () => refreshPreview());
   $("printButton").addEventListener("click", printList);
   $("paperWidth").addEventListener("change", () => {
     $("printableDots").value = $("paperWidth").value === "80" ? "576" : "384";
@@ -214,7 +213,6 @@ function renderPlanner() {
   $("paperBadge").textContent = `${state.printer.paperWidthMm} mm`;
   $("emptyPlan").classList.toggle("hidden", !!list);
   $("editor").classList.toggle("hidden", !list);
-  $("refreshPreview").disabled = !list;
   $("printButton").disabled = !list;
   if (list) {
     if (ensureSections(list)) persistList();
