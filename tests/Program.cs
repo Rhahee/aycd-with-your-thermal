@@ -44,6 +44,30 @@ try
     Assert(new AppStore(directory).State.Lists.Single().Tasks[0].Completed,
         "Perubahan daftar harian tidak tersimpan.");
 
+    var note = new QuickNote { Title = "Ide akhir pekan", Body = "Rancang tiket acara.\nBuat kode unik." };
+    store.SaveNote(note);
+    var createdAt = note.CreatedAt;
+    note.Body += "\nUji di printer.";
+    store.SaveNote(note);
+    var savedNote = new AppStore(directory).State.Notes.Single();
+    Assert(savedNote.Title == "Ide akhir pekan" && savedNote.Body == note.Body &&
+           savedNote.CreatedAt == createdAt, "Catatan tidak tersimpan atau waktu pembuatannya berubah.");
+    foreach (var (paper, dots) in new[] { (58, 384), (80, 576) })
+    {
+        var printer = new PrinterSettings { PaperWidthMm = paper, PrintableDots = dots };
+        using var image = ReceiptRenderer.RenderNote(savedNote, printer, "Rahee");
+        using var shortImage = ReceiptRenderer.RenderNote(new QuickNote
+        {
+            Title = savedNote.Title, Body = "Rancang tiket acara."
+        }, printer);
+        Assert(image.Width == dots && image.Height > shortImage.Height &&
+               HasClosingRule(image), $"Cetakan catatan {paper} mm tidak valid.");
+    }
+    store.DeleteNote(note.Id);
+    Assert(new AppStore(directory).State.Notes.Count == 0 &&
+           new AppStore(directory).State.Lists.Count == 1,
+        "Penghapusan catatan mengubah daftar to-do.");
+
     var legacyTask = System.Text.Json.JsonSerializer.Deserialize<TodoTask>(
         """{"id":"d92a2df4111747deaf0469b8bf22c72a","text":"Tugas lama","day":-1,"completed":false}""",
         JsonConfig.Options)!;

@@ -1,6 +1,6 @@
 # AYCD Printer
 
-**All You Can Do with Your Thermal Printer** adalah aplikasi daftar tugas untuk Windows. Antarmukanya berjalan di WebView2, sedangkan WinForms menyimpan data lokal dan mengirim cetakan ke printer thermal Bluetooth serial yang mendukung ESC/POS. Aplikasi tidak memerlukan akun atau internet untuk membuat daftar dan mencetak.
+**All You Can Do with Your Thermal Printer** adalah aplikasi daftar tugas dan catatan kilat untuk Windows. Antarmukanya berjalan di WebView2, sedangkan WinForms menyimpan data lokal dan mengirim cetakan ke printer thermal Bluetooth serial yang mendukung ESC/POS. Aplikasi tidak memerlukan akun atau internet untuk menulis dan mencetak.
 
 ## Instalasi langkah demi langkah
 
@@ -21,11 +21,12 @@ Printer RPP02N 80 mm pernah berhasil diuji pada laptop pengembangan melalui COM6
 ## Daftar dan cetakan
 
 - **To do list:** setiap daftar memiliki judul dan tanggal. Tambahkan section dengan memilih blok pertama berupa **Judul bagian**, **Checklist**, atau **Catatan**. Tambahkan blok lain melalui **+ Tambah blok** dan atur urutannya dengan tombol panah.
+- **Notes:** buat catatan kilat dengan judul opsional dan isi bebas. Catatan tersimpan otomatis, dapat dibuka kembali, dihapus, dan dicetak dengan profil printer yang sama. Pratinjau berubah saat mengetik.
 - **History:** buka, ubah, atau cetak ulang daftar yang tersimpan. Daftar Weekly dari versi lama tetap dapat dibuka di sini; menu khusus Weekly sudah tidak tersedia.
 - **Pratinjau:** mengikuti urutan section dan blok. Garis lurus memisahkan judul dari isi, garis putus-putus memisahkan section, dan nama penutup opsional dicetak setelah garis penutup. Kotak checklist pada kertas selalu kosong meskipun sudah ditandai selesai di aplikasi.
 - **Settings:** pilih profil printer, port COM, ukuran kertas, dan satu nama penutup untuk semua daftar. Pengaturan lanjutan memuat nama profil, lebar cetak dalam dot, dan kecepatan port.
 
-Daftar dan pengaturan disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Untuk mencadangkan data, tutup aplikasi lalu salin file tersebut ke tempat lain. Uninstall aplikasi tidak menghapus data ini.
+Daftar, catatan, dan pengaturan disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Untuk mencadangkan data, tutup aplikasi lalu salin file tersebut ke tempat lain. Uninstall aplikasi tidak menghapus data ini.
 
 ## Pembaruan aplikasi
 
@@ -65,6 +66,6 @@ Pasang Inno Setup 6, lalu commit dan push perubahan ke `main`. Skrip installer m
 
 Skrip melakukan publish aplikasi, mengunduh bootstrapper WebView2 dari Microsoft jika belum ada, memeriksa tanda tangan digitalnya, lalu membuat installer `.exe` dan paket update `.zip` di `installer\output\`. Folder `dist\`, `installer\output\`, dan `installer\prerequisites\` tidak dilacak Git.
 
-Untuk menerbitkan versi baru, samakan nomor versi di `PrintToDo.csproj` dan `installer/PrintToDo.iss`, push commit ke `main`, lalu push tag `v<versi>` pada commit tersebut. Workflow `.github/workflows/release.yml` menjalankan pengujian, membangun kedua berkas pada Windows, dan menambahkannya ke GitHub Releases.
+Untuk menerbitkan versi baru, samakan nomor versi di `PrintToDo.csproj` dan `installer/PrintToDo.iss`, tulis perubahan di `release-notes/v<versi>.md`, push commit ke `main`, lalu push tag `v<versi>` pada commit tersebut. Workflow `.github/workflows/release.yml` menjalankan pengujian, membangun kedua berkas pada Windows, dan menambahkannya ke GitHub Releases dengan catatan perubahan dari berkas tersebut.
 
 Installer memasang aplikasi ke `%LOCALAPPDATA%\Programs\All You Can Do with Your Thermal Printer` untuk pengguna Windows saat ini, membuat pintasan Start Menu, dan menawarkan pintasan desktop. Koneksi internet diperlukan saat instalasi jika WebView2 Runtime perlu dipasang.

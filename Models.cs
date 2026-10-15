@@ -16,10 +16,20 @@ internal sealed class AppState
 {
     public int SchemaVersion { get; set; } = 1;
     public List<TodoList> Lists { get; set; } = [];
+    public List<QuickNote> Notes { get; set; } = [];
     public PrinterSettings Printer { get; set; } = new();
     public List<PrinterSettings> PrinterProfiles { get; set; } = [];
     public string FooterName { get; set; } = "";
     public UpdateSettings Update { get; set; } = new();
+}
+
+internal sealed class QuickNote
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
 }
 
 internal sealed class UpdateSettings

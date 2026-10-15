@@ -21,6 +21,7 @@ internal sealed class AppStore
         if (State.SchemaVersion != 1)
             throw new InvalidDataException("Versi data aplikasi belum didukung.");
         State.Lists ??= [];
+        State.Notes ??= [];
         State.Printer ??= new PrinterSettings();
         State.PrinterProfiles ??= [];
         State.FooterName ??= "";
@@ -53,6 +54,32 @@ internal sealed class AppStore
     {
         if (State.Lists.RemoveAll(item => item.Id == id) == 0)
             throw new InvalidOperationException("Daftar tidak ditemukan.");
+        Persist();
+    }
+
+    public void SaveNote(QuickNote note)
+    {
+        ValidateNote(note);
+        var index = State.Notes.FindIndex(item => item.Id == note.Id);
+        if (index >= 0)
+        {
+            note.CreatedAt = State.Notes[index].CreatedAt;
+            note.UpdatedAt = DateTimeOffset.Now;
+            State.Notes[index] = note;
+        }
+        else
+        {
+            note.CreatedAt = DateTimeOffset.Now;
+            note.UpdatedAt = note.CreatedAt;
+            State.Notes.Add(note);
+        }
+        Persist();
+    }
+
+    public void DeleteNote(string id)
+    {
+        if (State.Notes.RemoveAll(item => item.Id == id) == 0)
+            throw new InvalidOperationException("Catatan tidak ditemukan.");
         Persist();
     }
 
@@ -132,6 +159,15 @@ internal sealed class AppStore
                 (list.Kind == "daily" && task.Day != -1))
                 throw new ArgumentException("Ada tugas yang tidak valid.");
         }
+    }
+
+    public static void ValidateNote(QuickNote note)
+    {
+        if (note.Id is null || note.Id.Length is < 1 or > 64 || !Guid.TryParse(note.Id, out _))
+            throw new ArgumentException("ID catatan tidak valid.");
+        if (note.Title is null || note.Title.Length > 100 ||
+            note.Body is null || note.Body.Length > 2000)
+            throw new ArgumentException("Catatan terlalu panjang.");
     }
 
     public static void ValidatePrinter(PrinterSettings settings)

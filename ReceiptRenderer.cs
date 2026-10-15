@@ -184,6 +184,89 @@ internal static class ReceiptRenderer
         return bitmap;
     }
 
+    public static Bitmap RenderNote(QuickNote note, PrinterSettings settings, string footerName = "")
+    {
+        AppStore.ValidateNote(note);
+        AppStore.ValidatePrinter(settings);
+        footerName = footerName?.Trim() ?? "";
+        if (footerName.Length > 80)
+            throw new ArgumentException("Nama penutup maksimal 80 karakter.");
+
+        var width = settings.PrintableDots;
+        var margin = width <= 400 ? 14 : 18;
+        using var titleFont = new Font("Segoe UI", width <= 400 ? 26f : 32f,
+            FontStyle.Bold, GraphicsUnit.Pixel);
+        using var bodyFont = new Font("Segoe UI", width <= 400 ? 21f : 24f,
+            FontStyle.Regular, GraphicsUnit.Pixel);
+        using var smallFont = new Font("Segoe UI", width <= 400 ? 17f : 19f,
+            FontStyle.Regular, GraphicsUnit.Pixel);
+        using var measuringBitmap = new Bitmap(1, 1);
+        using var measuring = Graphics.FromImage(measuringBitmap);
+        using var format = new StringFormat(StringFormat.GenericDefault)
+        {
+            FormatFlags = StringFormatFlags.LineLimit,
+            Trimming = StringTrimming.Word
+        };
+
+        var rows = new List<Row>();
+        float y = 12;
+        void Add(RowKind kind, string text, Font font, float gap)
+        {
+            var height = Math.Max(font.Height + 4,
+                measuring.MeasureString(text.Length == 0 ? " " : text, font,
+                    width - margin * 2, format).Height + 4);
+            rows.Add(new Row(kind, text, y, height));
+            y += height + gap;
+        }
+
+        Add(RowKind.Header, string.IsNullOrWhiteSpace(note.Title)
+            ? "CATATAN KILAT" : note.Title.Trim(), titleFont, 5);
+        Add(RowKind.Meta, note.CreatedAt.ToLocalTime().ToString("dd MMMM yyyy · HH:mm", Indonesian),
+            smallFont, 14);
+        rows.Add(new Row(RowKind.Rule, "", y, 2));
+        y += 17;
+        foreach (var line in note.Body.Replace("\r\n", "\n").Replace('\r', '\n').Trim().Split('\n'))
+            Add(RowKind.Note, line, bodyFont, line.Length == 0 ? 0 : 3);
+        if (footerName.Length > 0)
+        {
+            y += 9;
+            rows.Add(new Row(RowKind.Rule, "", y, 2));
+            y += 13;
+            Add(RowKind.Footer, footerName, smallFont, 0);
+        }
+        var heightPixels = (int)Math.Ceiling(y + 24);
+        if (heightPixels > 30000)
+            throw new InvalidOperationException("Catatan terlalu panjang untuk satu cetakan.");
+
+        var bitmap = new Bitmap(width, heightPixels, PixelFormat.Format24bppRgb);
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.Clear(Color.White);
+        graphics.SmoothingMode = SmoothingMode.HighQuality;
+        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+        foreach (var row in rows)
+        {
+            var rect = new RectangleF(margin, row.Top, width - margin * 2, row.Height);
+            switch (row.Kind)
+            {
+                case RowKind.Header:
+                    graphics.DrawString(row.Text, titleFont, Brushes.Black, rect, format);
+                    break;
+                case RowKind.Meta:
+                case RowKind.Footer:
+                    graphics.DrawString(row.Text, smallFont, Brushes.Black, rect, format);
+                    break;
+                case RowKind.Note:
+                    graphics.DrawString(row.Text, bodyFont, Brushes.Black, rect, format);
+                    break;
+                case RowKind.Rule:
+                    using (var pen = new Pen(Color.Black, 2))
+                        graphics.DrawLine(pen, margin, row.Top, width - margin, row.Top);
+                    break;
+            }
+        }
+        return bitmap;
+    }
+
     public static Bitmap RenderTest(PrinterSettings settings, string footerName = "")
     {
         var sample = new TodoList

@@ -90,6 +90,17 @@ internal sealed class MainForm : Form
                     _store.DeleteList(payload.GetProperty("id").GetString() ?? "");
                     data = null;
                     break;
+                case "saveNote":
+                    var note = JsonSerializer.Deserialize<QuickNote>(
+                        payload.GetProperty("note").GetRawText(), JsonConfig.Options)
+                        ?? throw new ArgumentException("Data catatan kosong.");
+                    _store.SaveNote(note);
+                    data = note;
+                    break;
+                case "deleteNote":
+                    _store.DeleteNote(payload.GetProperty("id").GetString() ?? "");
+                    data = null;
+                    break;
                 case "savePrinter":
                     var printer = JsonSerializer.Deserialize<PrinterSettings>(
                         payload.GetProperty("printer").GetRawText(), JsonConfig.Options)
@@ -122,7 +133,7 @@ internal sealed class MainForm : Form
                     data = new
                     {
                         installedCommit = UpdateService.GetInstalledCommit(AppContext.BaseDirectory),
-                        appVersion = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "1.0.4"
+                        appVersion = typeof(MainForm).Assembly.GetName().Version?.ToString(3) ?? "1.1.0"
                     };
                     break;
                 case "checkUpdate":
@@ -165,6 +176,14 @@ internal sealed class MainForm : Form
                                _store.State.FooterName))
                         data = ReceiptRenderer.ToDataUrl(bitmap);
                     break;
+                case "previewNote":
+                    var previewNote = JsonSerializer.Deserialize<QuickNote>(
+                        payload.GetProperty("note").GetRawText(), JsonConfig.Options)
+                        ?? throw new ArgumentException("Data catatan kosong.");
+                    using (var bitmap = ReceiptRenderer.RenderNote(previewNote, _store.State.Printer,
+                               _store.State.FooterName))
+                        data = ReceiptRenderer.ToDataUrl(bitmap);
+                    break;
                 case "testPrint":
                     if (!await _printGate.WaitAsync(0))
                         throw new InvalidOperationException("Printer sedang mencetak.");
@@ -191,6 +210,23 @@ internal sealed class MainForm : Form
                     }
                     finally { _printGate.Release(); }
                     data = "Data cetak dikirim ke printer.";
+                    break;
+                case "printNote":
+                    var noteId = payload.GetProperty("id").GetString();
+                    var savedNote = _store.State.Notes.FirstOrDefault(item => item.Id == noteId)
+                        ?? throw new InvalidOperationException("Simpan catatan sebelum mencetak.");
+                    if (string.IsNullOrWhiteSpace(savedNote.Body))
+                        throw new InvalidOperationException("Isi catatan sebelum mencetak.");
+                    if (!await _printGate.WaitAsync(0))
+                        throw new InvalidOperationException("Printer sedang mencetak.");
+                    try
+                    {
+                        using var bitmap = ReceiptRenderer.RenderNote(savedNote, _store.State.Printer,
+                            _store.State.FooterName);
+                        await Task.Run(() => EscPosPrinter.Print(bitmap, _store.State.Printer));
+                    }
+                    finally { _printGate.Release(); }
+                    data = "Data catatan dikirim ke printer.";
                     break;
                 default:
                     throw new ArgumentException("Perintah aplikasi tidak dikenal.");

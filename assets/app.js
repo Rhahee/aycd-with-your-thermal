@@ -2,12 +2,15 @@ const $ = (id) => document.getElementById(id);
 const dayNames = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 const pending = new Map();
 let nextMessageId = 1;
-let state = { lists: [], printer: { portName: "COM6", name: "RPP02N (80 mm)", paperWidthMm: 80, printableDots: 576, baudRate: 115200 } };
+let state = { lists: [], notes: [], printer: { portName: "COM6", name: "RPP02N (80 mm)", paperWidthMm: 80, printableDots: 576, baudRate: 115200 } };
 let view = "daily";
 let selectedId = null;
+let selectedNoteId = null;
 let saveChain = Promise.resolve();
 let previewTimer = null;
 let previewGeneration = 0;
+let notePreviewTimer = null;
+let notePreviewGeneration = 0;
 let toastTimer = null;
 let editingPrinter = null;
 let updateAvailable = false;
@@ -54,12 +57,15 @@ function weekLabel(value) {
 }
 function createId() { return crypto.randomUUID().replaceAll("-", ""); }
 function currentList() { return state.lists.find((list) => list.id === selectedId) || null; }
+function currentNote() { return state.notes.find((note) => note.id === selectedNoteId) || null; }
 function chosenDate() {
   return $("planDate").value || isoDate(new Date());
 }
 
 async function start() {
   state = await bridge("getState");
+  state.notes ??= [];
+  selectedNoteId = [...state.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.id || null;
   $("planDate").value = isoDate(new Date());
   bindEvents();
   selectForDate();
@@ -72,7 +78,7 @@ async function loadVersion() {
     const info = await bridge("updateStatus");
     const commit = /^[0-9a-f]{7,40}$/i.test(info.installedCommit || "")
       ? ` · ${info.installedCommit.slice(0, 7)}` : "";
-    $("appVersion").textContent = `Versi ${info.appVersion || "1.0.5"}${commit}`;
+    $("appVersion").textContent = `Versi ${info.appVersion || "1.1.0"}${commit}`;
   } catch {
     $("appVersion").textContent = "Versi tidak tersedia";
   }
@@ -89,8 +95,9 @@ function bindEvents() {
     selectForDate();
     render();
   });
-  $("newListButton").addEventListener("click", createList);
+  $("newListButton").addEventListener("click", () => view === "notes" ? createNote() : createList());
   $("emptyCreateButton").addEventListener("click", createList);
+  $("emptyNoteButton").addEventListener("click", createNote);
   document.querySelectorAll("[data-section-type]").forEach((button) =>
     button.addEventListener("click", () => addSection(button.dataset.sectionType)));
   $("listTitle").addEventListener("input", () => {
@@ -101,6 +108,9 @@ function bindEvents() {
     schedulePreview();
   });
   $("printButton").addEventListener("click", printList);
+  $("noteTitle").addEventListener("input", () => updateNote("title", $("noteTitle").value));
+  $("noteBody").addEventListener("input", () => updateNote("body", $("noteBody").value));
+  $("printNoteButton").addEventListener("click", printNote);
   $("paperWidth").addEventListener("change", () => {
     $("printableDots").value = $("paperWidth").value === "80" ? "576" : "384";
   });
@@ -154,12 +164,15 @@ function render() {
     button.classList.toggle("active", button.dataset.view === view));
   const planner = view === "daily";
   $("plannerView").classList.toggle("hidden", !planner);
+  $("notesView").classList.toggle("hidden", view !== "notes");
   $("historyView").classList.toggle("hidden", view !== "history");
   $("printerView").classList.toggle("hidden", view !== "printer");
-  $("newListButton").classList.toggle("hidden", !planner);
+  $("newListButton").classList.toggle("hidden", !planner && view !== "notes");
+  $("newListButton").textContent = view === "notes" ? "+ Catatan baru" : "+ Daftar baru";
   $("pageTitle").textContent = ({ daily: currentList()?.kind === "weekly" ? "Weekly · History" : "To do list",
-    history: "History", printer: "Settings" })[view];
+    notes: "Notes", history: "History", printer: "Settings" })[view];
   if (planner) renderPlanner();
+  if (view === "notes") renderNotes();
   if (view === "history") renderHistory();
   if (view === "printer") { renderPrinter(); renderSettings(); }
 }
@@ -487,6 +500,152 @@ async function printList() {
     showToast("Data cetak dikirim. Periksa hasil pada kertas.");
   } catch (error) { showToast("Gagal mencetak: " + error.message, true); }
   finally { button.disabled = false; button.textContent = "Cetak daftar"; }
+}
+
+async function createNote() {
+  try {
+    await saveChain;
+    const now = new Date().toISOString();
+    const note = { id: createId(), title: "", body: "", createdAt: now, updatedAt: now };
+    const saved = await bridge("saveNote", { note });
+    state.notes.push(saved);
+    selectedNoteId = saved.id;
+    view = "notes";
+    render();
+    $("noteTitle").focus();
+  } catch (error) { showToast("Gagal membuat catatan: " + error.message, true); }
+}
+
+function updateNote(field, value) {
+  const note = currentNote();
+  if (!note) return;
+  note[field] = value;
+  note.updatedAt = new Date().toISOString();
+  renderNoteList();
+  persistNote();
+  scheduleNotePreview();
+  $("printNoteButton").disabled = !note.body.trim();
+}
+
+function persistNote() {
+  const note = currentNote();
+  if (!note) return Promise.resolve();
+  const snapshot = structuredClone(note);
+  saveChain = saveChain.catch(() => {}).then(async () => {
+    const saved = await bridge("saveNote", { note: snapshot });
+    const existing = state.notes.find((item) => item.id === saved.id);
+    if (existing) existing.updatedAt = saved.updatedAt;
+  });
+  saveChain.catch((error) => showToast("Gagal menyimpan catatan: " + error.message, true));
+  return saveChain;
+}
+
+function renderNotes() {
+  const note = currentNote();
+  $("emptyNote").classList.toggle("hidden", !!note);
+  $("noteEditor").classList.toggle("hidden", !note);
+  $("notePaperBadge").textContent = `${state.printer.paperWidthMm} mm`;
+  $("printNoteButton").disabled = !note?.body.trim();
+  renderNoteList();
+  if (note) {
+    $("noteTitle").value = note.title;
+    $("noteBody").value = note.body;
+    $("noteDate").textContent = new Date(note.createdAt).toLocaleString("id-ID", {
+      day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
+    });
+    scheduleNotePreview(0);
+  } else {
+    clearTimeout(notePreviewTimer);
+    notePreviewGeneration++;
+    $("notePreviewImage").classList.add("hidden");
+    $("notePreviewPlaceholder").classList.remove("hidden");
+  }
+}
+
+function renderNoteList() {
+  const container = $("noteList");
+  container.replaceChildren();
+  $("noteCount").textContent = `${state.notes.length} catatan`;
+  if (!state.notes.length) {
+    const empty = document.createElement("div");
+    empty.className = "history-empty";
+    empty.textContent = "Belum ada catatan tersimpan.";
+    container.append(empty);
+    return;
+  }
+  for (const note of [...state.notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    item.classList.toggle("active", note.id === selectedNoteId);
+    const icon = document.createElement("div");
+    icon.className = "history-kind";
+    icon.textContent = "▤";
+    const main = document.createElement("div");
+    main.className = "history-main";
+    const name = document.createElement("strong");
+    name.textContent = note.title.trim() || "Catatan tanpa judul";
+    const detail = document.createElement("small");
+    detail.textContent = note.body.trim().replace(/\s+/g, " ").slice(0, 90) ||
+      new Date(note.createdAt).toLocaleDateString("id-ID");
+    main.append(name, detail);
+    const actions = document.createElement("div");
+    actions.className = "history-actions";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "button button-ghost";
+    open.textContent = "Buka";
+    open.addEventListener("click", () => { selectedNoteId = note.id; renderNotes(); });
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "button button-ghost button-danger";
+    remove.textContent = "Hapus";
+    remove.addEventListener("click", async () => {
+      if (!confirm(`Hapus "${name.textContent}"?`)) return;
+      try {
+        await saveChain;
+        await bridge("deleteNote", { id: note.id });
+        state.notes = state.notes.filter((item) => item.id !== note.id);
+        if (selectedNoteId === note.id) selectedNoteId = state.notes[0]?.id || null;
+        renderNotes();
+        showToast("Catatan dihapus.");
+      } catch (error) { showToast("Gagal menghapus catatan: " + error.message, true); }
+    });
+    actions.append(open, remove);
+    item.append(icon, main, actions);
+    container.append(item);
+  }
+}
+
+function scheduleNotePreview(delay = 450) {
+  clearTimeout(notePreviewTimer);
+  const generation = ++notePreviewGeneration;
+  notePreviewTimer = setTimeout(() => refreshNotePreview(generation), delay);
+}
+
+async function refreshNotePreview(generation) {
+  const note = currentNote();
+  if (!note) return;
+  try {
+    const image = await bridge("previewNote", { note: structuredClone(note) });
+    if (generation !== notePreviewGeneration || currentNote()?.id !== note.id) return;
+    $("notePreviewImage").src = image;
+    $("notePreviewImage").classList.remove("hidden");
+    $("notePreviewPlaceholder").classList.add("hidden");
+  } catch (error) { showToast("Pratinjau catatan gagal: " + error.message, true); }
+}
+
+async function printNote() {
+  const note = currentNote();
+  if (!note?.body.trim()) return;
+  const button = $("printNoteButton");
+  button.disabled = true;
+  button.textContent = "Mengirim…";
+  try {
+    await saveChain;
+    await bridge("printNote", { id: note.id });
+    showToast("Catatan dikirim. Periksa hasil pada kertas.");
+  } catch (error) { showToast("Gagal mencetak catatan: " + error.message, true); }
+  finally { button.disabled = false; button.textContent = "Cetak catatan"; }
 }
 
 function renderHistory() {

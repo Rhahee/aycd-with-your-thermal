@@ -14,6 +14,7 @@
       <p class="sidebar-caption">Your thermal printer can do more than receipts.</p>
       <nav aria-label="Navigasi utama">
         <button class="nav-button active" type="button" data-view="daily"><span class="nav-icon">☑</span> To do list</button>
+        <button class="nav-button" type="button" data-view="notes"><span class="nav-icon">▤</span> Notes</button>
         <button class="nav-button" type="button" data-view="history"><span class="nav-icon">◷</span> History</button>
         <button class="nav-button" type="button" data-view="printer"><span class="nav-icon">⚙</span> Settings</button>
       </nav>
@@ -65,6 +66,35 @@
           <p class="preview-note">Kotak centang di kertas selalu kosong.</p>
           <div class="paper-stage"><div id="previewPlaceholder" class="preview-placeholder">Buat daftar untuk melihat pratinjau.</div><img id="previewImage" alt="Pratinjau hasil cetak" class="hidden"></div>
           <div class="preview-actions"><button id="printButton" class="button button-primary" type="button" disabled>Cetak daftar</button></div>
+        </aside>
+      </section>
+
+      <section id="notesView" class="notes-layout hidden">
+        <div class="notes-column">
+          <div id="emptyNote" class="empty-card">
+            <div class="empty-symbol">▤</div>
+            <h2>Belum ada catatan</h2>
+            <p>Tulis pesan singkat, lalu cetak untuk ditempel atau dibagikan.</p>
+            <button id="emptyNoteButton" class="button button-primary" type="button">Buat catatan</button>
+          </div>
+          <div id="noteEditor" class="editor-card hidden">
+            <label for="noteTitle">Judul catatan</label>
+            <input id="noteTitle" class="title-input" maxlength="100" placeholder="Contoh: Ide akhir pekan">
+            <div id="noteDate" class="editor-meta"></div>
+            <label for="noteBody">Isi catatan</label>
+            <textarea id="noteBody" class="note-body" maxlength="2000" placeholder="Tulis catatan singkat di sini..."></textarea>
+            <div class="note-editor-hint">Tersimpan otomatis di laptop ini.</div>
+          </div>
+          <div class="content-card notes-saved">
+            <div class="section-heading"><h2>Catatan tersimpan</h2><span id="noteCount" class="badge">0 catatan</span></div>
+            <div id="noteList" class="history-list"></div>
+          </div>
+        </div>
+        <aside class="preview-column">
+          <div class="preview-header"><div><div class="eyebrow">HASIL CETAK</div><h2>Pratinjau</h2></div><span id="notePaperBadge" class="badge">80 mm</span></div>
+          <p class="preview-note">Tampilan catatan pada kertas thermal.</p>
+          <div class="paper-stage"><div id="notePreviewPlaceholder" class="preview-placeholder">Buat catatan untuk melihat pratinjau.</div><img id="notePreviewImage" alt="Pratinjau catatan" class="hidden"></div>
+          <div class="preview-actions"><button id="printNoteButton" class="button button-primary" type="button" disabled>Cetak catatan</button></div>
         </aside>
       </section>
 
