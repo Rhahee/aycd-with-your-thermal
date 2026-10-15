@@ -17,6 +17,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 MinVersion=10.0
 WizardStyle=modern
+SetupIconFile=..\branding\app-icon.ico
 Compression=lzma2/max
 SolidCompression=yes
 CloseApplications=yes

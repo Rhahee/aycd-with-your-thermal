@@ -31,6 +31,8 @@ Daftar dan pengaturan disimpan di `%LOCALAPPDATA%\PrintToDo\state.json`. Untuk m
 
 Di bagian bawah **Settings**, klik **Cek Update**. Aplikasi memeriksa versi terbaru di [GitHub Releases](https://github.com/Rhahee/aycd-with-your-thermal/releases/latest). Jika tersedia, tombol **Update** akan aktif. Tombol itu mengunduh paket aplikasi siap pakai, memeriksa checksum SHA-256, memasangnya, lalu membuka ulang aplikasi. Versi dan commit yang terpasang ditampilkan di kiri bawah sidebar.
 
+Pemeriksaan update membandingkan nomor versi. Build baru dengan nomor versi yang sama tidak muncul lewat **Cek Update**; perubahan seperti itu perlu dipasang ulang menggunakan installer yang baru dibuat.
+
 Update memerlukan koneksi internet ke GitHub dan izin menulis ke folder instalasi. Pengguna tidak perlu memasang Git atau SDK .NET. Jika update gagal, daftar tetap tersimpan; salinan executable sebelumnya tersedia sebagai `PrintToDo.exe.previous` bila penggantian file sudah dimulai. Pengguna versi 1.0.3 atau lebih lama dapat memasang installer terbaru di atas versi lama untuk beralih ke sistem update baru tanpa menghapus daftar.
 
 ## Dukungan printer

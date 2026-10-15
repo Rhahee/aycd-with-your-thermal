@@ -19,6 +19,8 @@ internal sealed class MainForm : Form
     public MainForm()
     {
         Text = "AYCD Printer";
+        if (System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath) is { } appIcon)
+            Icon = appIcon;
         MinimumSize = new Size(900, 620);
         Size = new Size(1240, 820);
         StartPosition = FormStartPosition.CenterScreen;
